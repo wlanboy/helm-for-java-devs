@@ -18,6 +18,7 @@ public class IndexController {
 
     private final BuildProperties buildProperties;
     private final ConfigurableEnvironment environment;
+    private final String podName = System.getenv().getOrDefault("HOSTNAME", "unknown");
 
     public IndexController(BuildProperties buildProperties, ConfigurableEnvironment environment) {
         this.buildProperties = buildProperties;
@@ -39,6 +40,7 @@ public class IndexController {
                 </style></head>
                 <body>
                   <h1>%s %s</h1>
+                  <p style="color:#888;font-size:0.85rem;">pod: %s</p>
                   <h2>Info</h2>
                   <ul>
                     <li><a href="/application">/application</a></li>
@@ -57,7 +59,7 @@ public class IndexController {
                   </ul>
                 </body>
                 </html>
-                """.formatted(buildProperties.getArtifact(), buildProperties.getVersion());
+                """.formatted(buildProperties.getArtifact(), buildProperties.getVersion(), podName);
     }
 
     @GetMapping(value = "/application", produces = MediaType.APPLICATION_JSON_VALUE)
