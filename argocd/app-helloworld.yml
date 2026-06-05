@@ -16,7 +16,7 @@ spec:
         - values.yaml
 
   destination:
-    name: clusterhello
+    server: https://kubernetes.default.svc
     namespace: helloworld
 
   syncPolicy:

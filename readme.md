@@ -118,13 +118,23 @@ kubectl apply -f argocd/app-helloworld.yml
 
 ## Schritt 6 — ArgoCD-Sync auslösen
 
-ArgoCD erkennt Änderungen im Git-Repository automatisch (auto-sync ist aktiv). Manueller Sync:
+ArgoCD erkennt Änderungen im Git-Repository automatisch (auto-sync ist aktiv).
+
+Für einen manuellen Sync zuerst einloggen:
 
 ```bash
+# Admin-Passwort auslesen
+kubectl get secret argocd-initial-admin-secret -n argocd \
+  -o jsonpath='{.data.password}' | base64 -d
+
+# Einloggen
+argocd login argocd.gmk.lan --username admin
+
+# Sync auslösen
 argocd app sync helloworld
 ```
 
-Oder im ArgoCD-UI unter dem Projekt `helloteam` → Application `helloworld`.
+Alternativ direkt im ArgoCD-UI: https://argocd.gmk.lan → Projekt `helloteam` → Application `helloworld`.
 
 ---
 
@@ -136,7 +146,7 @@ kubectl get certificate -n helloworld
 kubectl get gateway -n helloworld
 ```
 
-App über den Istio-Ingress erreichbar unter `https://helloworld.tp.lan`.
+App über den Istio-Ingress erreichbar unter `https://helloworld.gmk.lan`.
 
 Health-Endpoint prüfen:
 
