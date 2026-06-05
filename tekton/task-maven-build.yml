@@ -1,0 +1,39 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: maven-build
+spec:
+  params:
+    - name: GOALS
+      type: array
+      default:
+        - "-q"
+        - "-DskipTests"
+        - "compile"
+        - "spring-boot:process-aot"
+        - "package"
+    - name: MAVEN_IMAGE
+      type: string
+      description: Maven + JDK image. Override for Java 25 (e.g. a custom image with JDK 25).
+      default: maven:3.9-eclipse-temurin-21
+    - name: SUBDIRECTORY
+      type: string
+      description: Subdirectory within the workspace that contains the pom.xml.
+      default: "."
+
+  workspaces:
+    - name: source
+
+  steps:
+    - name: mvn
+      image: $(params.MAVEN_IMAGE)
+      workingDir: $(workspaces.source.path)/$(params.SUBDIRECTORY)
+      command: ["mvn"]
+      args: ["$(params.GOALS[*])"]
+      volumeMounts:
+        - name: maven-cache
+          mountPath: /root/.m2
+
+  volumes:
+    - name: maven-cache
+      emptyDir: {}
