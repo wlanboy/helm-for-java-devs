@@ -3,7 +3,7 @@ deploymentName: helloworld
 namespace: helloworld
 
 image:
-  repository: wlanboy/helloworld
+  repository: registry.kube-system.svc:5000/helloworld
   tag: latest
   pullPolicy: Always
 
