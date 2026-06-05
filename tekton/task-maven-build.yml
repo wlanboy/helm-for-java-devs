@@ -15,7 +15,7 @@ spec:
     - name: MAVEN_IMAGE
       type: string
       description: Maven + JDK image. Override for Java 25 (e.g. a custom image with JDK 25).
-      default: maven:3.9-eclipse-temurin-21
+      default: maven:3.9-eclipse-temurin-25
     - name: SUBDIRECTORY
       type: string
       description: Subdirectory within the workspace that contains the pom.xml.
