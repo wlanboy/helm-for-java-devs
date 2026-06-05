@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: helloworld
+  namespace: argocd
+spec:
+  project: helloteam
+
+  source:
+    repoURL: https://github.com/wlanboy/helm-for-java-devs.git
+    targetRevision: main
+    path: helmchart
+    helm:
+      releaseName: helloworld
+      valueFiles:
+        - values.yaml
+
+  destination:
+    name: clusterhello
+    namespace: helloworld
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
