@@ -129,12 +129,14 @@ kubectl get secret argocd-initial-admin-secret -n argocd \
 
 # Einloggen
 argocd login argocd.gmk.lan --username admin
+# oder
+argocd login argocd.tp.lan --username admin
 
 # Sync auslösen
 argocd app sync helloworld
 ```
 
-Alternativ direkt im ArgoCD-UI: https://argocd.gmk.lan → Projekt `helloteam` → Application `helloworld`.
+Alternativ direkt im ArgoCD-UI: https://argocd.gmk.lan oder https://argocd.tp.lan → Projekt `helloteam` → Application `helloworld`.
 
 ---
 
@@ -146,11 +148,12 @@ kubectl get certificate -n helloworld
 kubectl get gateway -n helloworld
 ```
 
-App über den Istio-Ingress erreichbar unter `https://helloworld.gmk.lan`.
+App über den Istio-Ingress erreichbar unter `https://helloworld.gmk.lan` oder `https://helloworld.tp.lan`.
 
 Health-Endpoint prüfen:
 
 ```bash
+curl https://helloworld.gmk.lan/actuator/health
 curl https://helloworld.tp.lan/actuator/health
 ```
 
