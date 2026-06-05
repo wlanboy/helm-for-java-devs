@@ -157,6 +157,36 @@ curl https://helloworld.gmk.lan/actuator/health
 curl https://helloworld.tp.lan/actuator/health
 ```
 
+Liveness- und Readiness-Status einzeln abrufen:
+
+```bash
+curl https://helloworld.gmk.lan/actuator/health/liveness
+curl https://helloworld.gmk.lan/actuator/health/readiness
+```
+
+### Probe-Status manuell steuern
+
+Der `ProbeController` erlaubt es, den Liveness- und Readiness-Zustand per GET-Request zu setzen — nützlich zum Testen der Kubernetes-Probes ohne Neustart:
+
+| Endpunkt | Effekt | Actuator-Status |
+|---|---|---|
+| `GET /control/health/ok` | Liveness → CORRECT | `/actuator/health/liveness` → UP |
+| `GET /control/health/notok` | Liveness → BROKEN | `/actuator/health/liveness` → DOWN |
+| `GET /control/ready/ok` | Readiness → ACCEPTING_TRAFFIC | `/actuator/health/readiness` → UP |
+| `GET /control/ready/notok` | Readiness → REFUSING_TRAFFIC | `/actuator/health/readiness` → DOWN |
+
+```bash
+# Liveness auf "not ok" setzen → Kubernetes startet den Pod neu
+curl https://helloworld.gmk.lan/control/health/notok
+
+# Readiness auf "not ok" setzen → Kubernetes nimmt den Pod aus dem Load Balancer
+curl https://helloworld.gmk.lan/control/ready/notok
+
+# Wieder auf ok setzen
+curl https://helloworld.gmk.lan/control/health/ok
+curl https://helloworld.gmk.lan/control/ready/ok
+```
+
 ---
 
 ## Übersicht der Dateien
@@ -166,6 +196,7 @@ helmchart/          Helm Chart (Deployment, Service, ConfigMap, Istio Gateway/VS
 argocd/             ArgoCD AppProject, Application, Cluster-Secret, Namespace
 tekton/             Pipeline, Tasks (maven-build, kaniko), ServiceAccount, PipelineRun
 java/               Spring Boot Helloworld App (Maven, Jetty, Actuator, Prometheus)
+                    ProbeController: GET /control/health/{ok|notok} und /control/ready/{ok|notok}
 ```
 
 ## Hinweise
