@@ -3,7 +3,7 @@ deploymentName: helloworld
 namespace: helloworld
 
 image:
-  repository: registry.kube-system.svc:5000/helloworld
+  repository: registry.registry.svc.cluster.local:5000/helloworld
   tag: latest
   pullPolicy: Always
 

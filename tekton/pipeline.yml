@@ -23,7 +23,7 @@ spec:
       default: main
     - name: image
       type: string
-      default: registry.kube-system.svc:5000/helloworld:latest
+      default: registry.registry.svc.cluster.local:5000/helloworld:latest
     - name: dockerfile
       type: string
       default: java/Dockerfile

@@ -23,11 +23,11 @@ Damit k3s Images aus der lokalen Registry ziehen kann, muss die Mirror-Konfigura
 ```yaml
 # /etc/rancher/k3s/registries.yaml
 mirrors:
-  "registry.kube-system.svc:5000":
+  "registry.registry.svc.cluster.local:5000":
     endpoint:
-      - "http://registry.kube-system.svc:5000"
+      - "http://registry.registry.svc.cluster.local:5000"
 configs:
-  "registry.kube-system.svc:5000":
+  "registry.registry.svc.cluster.local:5000":
     tls:
       insecure_skip_verify: true
 ```
@@ -83,7 +83,7 @@ tkn pipelinerun logs --last -f
 Der Run durchläuft drei Schritte:
 1. **clone** — Repository auschecken
 2. **build-jar** — Maven-Build mit Spring Boot AOT (`compile → process-aot → package`)
-3. **docker-push** — Kaniko baut das Docker-Image und pusht nach `registry.kube-system.svc:5000/helloworld:latest`
+3. **docker-push** — Kaniko baut das Docker-Image und pusht nach `registry.registry.svc.cluster.local:5000/helloworld:latest`
 
 ---
 
@@ -91,7 +91,7 @@ Der Run durchläuft drei Schritte:
 
 ```bash
 kubectl run registry-check --image=curlimages/curl --restart=Never --rm -it -- \
-  curl http://registry.kube-system.svc:5000/v2/helloworld/tags/list
+  curl http://registry.registry.svc.cluster.local:5000/v2/helloworld/tags/list
 ```
 
 Erwartet: `{"name":"helloworld","tags":["latest"]}`
