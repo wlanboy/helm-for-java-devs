@@ -4,6 +4,4 @@ metadata:
   name: {{ .Values.deploymentName }}-config
 data:
   application.properties: |
-    spring.application.name={{ .Values.deploymentName }}
-    management.endpoints.web.exposure.include=prometheus,health,info
-    management.endpoint.health.show-details=always
+{{ tpl (.Files.Get "config/application.properties") . | indent 4 }}
