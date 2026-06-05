@@ -7,7 +7,6 @@ spec:
     - name: GOALS
       type: array
       default:
-        - "-q"
         - "-DskipTests"
         - "compile"
         - "spring-boot:process-aot"
