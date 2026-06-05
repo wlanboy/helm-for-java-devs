@@ -40,33 +40,15 @@ sudo systemctl restart k3s
 
 ---
 
-## Schritt 2 — Namespace und ArgoCD vorbereiten
+## Schritt 2 — Tekton-Ressourcen installieren
+
+### 2.1 git-clone Task aus dem Tekton-Katalog installieren
 
 ```bash
-# Namespace mit Istio-Sidecar-Injection anlegen
-kubectl apply -f argocd/hello-namespace.yml
-
-# Cluster-Secret in ArgoCD registrieren
-kubectl apply -f argocd/cluster-hello.yml
-
-# ArgoCD-Projekt anlegen
-kubectl apply -f argocd/helloteam-project.yaml
-
-# ArgoCD-Application anlegen (noch kein Sync, Image fehlt noch)
-kubectl apply -f argocd/app-helloworld.yml
+kubectl apply -f tekton/git-clone.yaml
 ```
 
----
-
-## Schritt 3 — Tekton-Ressourcen installieren
-
-### 3.1 git-clone Task aus dem Tekton-Katalog installieren
-
-```bash
-kubectl apply -f https://api.hub.tekton.dev/v1/resource/tekton/task/git-clone/0.9/raw
-```
-
-### 3.2 Eigene Tasks und Pipeline installieren
+### 2.2 Eigene Tasks und Pipeline installieren
 
 ```bash
 kubectl apply -f tekton/serviceaccount.yaml
@@ -77,7 +59,7 @@ kubectl apply -f tekton/pipeline.yml
 
 ---
 
-## Schritt 4 — Pipeline starten
+## Schritt 3 — Pipeline starten
 
 ```bash
 kubectl create -f tekton/pipeline-run.yml
@@ -105,13 +87,32 @@ Der Run durchläuft drei Schritte:
 
 ---
 
-## Schritt 5 — Image in der Registry prüfen
+## Schritt 4 — Image in der Registry prüfen
 
 ```bash
-curl http://registry.kube-system.svc:5000/v2/helloworld/tags/list
+kubectl run registry-check --image=curlimages/curl --restart=Never --rm -it -- \
+  curl http://registry.kube-system.svc:5000/v2/helloworld/tags/list
 ```
 
 Erwartet: `{"name":"helloworld","tags":["latest"]}`
+
+---
+
+## Schritt 5 — Namespace und ArgoCD vorbereiten
+
+```bash
+# Namespace mit Istio-Sidecar-Injection anlegen
+kubectl apply -f argocd/hello-namespace.yml
+
+# Cluster-Secret in ArgoCD registrieren
+kubectl apply -f argocd/cluster-hello.yml
+
+# ArgoCD-Projekt anlegen
+kubectl apply -f argocd/helloteam-project.yaml
+
+# ArgoCD-Application anlegen
+kubectl apply -f argocd/app-helloworld.yml
+```
 
 ---
 
@@ -156,5 +157,5 @@ java/               Spring Boot Helloworld App (Maven, Jetty, Actuator, Promethe
 
 ## Hinweise
 
-- **Maven-Image**: Der Task `maven-build` nutzt standardmäßig `maven:3.9-eclipse-temurin-21`. Für Java 25 den Parameter `MAVEN_IMAGE` im PipelineRun überschreiben.
+- **Maven-Image**: Der Task `maven-build` nutzt `maven:3.9-eclipse-temurin-25` (passend zur `<java.version>25</java.version>` im pom.xml).
 - **Kein Re-deploy bei gleichem Tag**: Da das Image-Tag `latest` ist, muss in ArgoCD `selfHeal: true` aktiv sein oder der Deployment-Pod manuell neu gestartet werden (`kubectl rollout restart deployment/helloworld -n helloworld`).
