@@ -22,6 +22,7 @@ certmanager:
   issuer: local-ca-issuer
   kind: ClusterIssuer
   secretName: helloworld-tls
+  namespace: istio-ingress
 
 extraVolumeMounts: []
 extraVolumes: []
