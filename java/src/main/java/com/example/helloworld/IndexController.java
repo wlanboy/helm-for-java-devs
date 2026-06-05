@@ -31,12 +31,30 @@ public class IndexController {
                 <head><style>
                   body { font-family: monospace; max-width: 600px; margin: 2rem auto; color: #333; }
                   h1   { font-size: 1.2rem; margin-bottom: 0.5rem; }
+                  ul   { padding-left: 1rem; }
+                  li   { margin: 0.3rem 0; }
                   a    { color: #0070f3; text-decoration: none; }
                   a:hover { text-decoration: underline; }
+                  h2   { font-size: 1rem; margin-top: 1.2rem; margin-bottom: 0.3rem; }
                 </style></head>
                 <body>
                   <h1>%s %s</h1>
-                  <p><a href="/application">/application</a></p>
+                  <h2>Info</h2>
+                  <ul>
+                    <li><a href="/application">/application</a></li>
+                  </ul>
+                  <h2>Probes</h2>
+                  <ul>
+                    <li><a href="/actuator/health/liveness">/actuator/health/liveness</a></li>
+                    <li><a href="/actuator/health/readiness">/actuator/health/readiness</a></li>
+                  </ul>
+                  <h2>Controls</h2>
+                  <ul>
+                    <li><a href="/control/health/ok">/control/health/ok</a></li>
+                    <li><a href="/control/health/notok">/control/health/notok</a></li>
+                    <li><a href="/control/ready/ok">/control/ready/ok</a></li>
+                    <li><a href="/control/ready/notok">/control/ready/notok</a></li>
+                  </ul>
                 </body>
                 </html>
                 """.formatted(buildProperties.getArtifact(), buildProperties.getVersion());
