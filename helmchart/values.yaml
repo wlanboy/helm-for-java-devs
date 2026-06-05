@@ -1,0 +1,27 @@
+replicaCount: 1
+deploymentName: helloworld
+namespace: helloworld
+
+image:
+  repository: wlanboy/helloworld
+  tag: latest
+  pullPolicy: Always
+
+hosts:
+  - helloworld.tp.lan
+
+service:
+  port: 8080
+
+istio:
+  gateway: helloworld-gateway
+
+certmanager:
+  enabled: true
+  issuer: local-ca-issuer
+  kind: ClusterIssuer
+  secretName: helloworld-tls
+
+extraVolumeMounts: []
+extraVolumes: []
+extraEnv: []

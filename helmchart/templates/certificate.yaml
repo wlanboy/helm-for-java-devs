@@ -1,0 +1,17 @@
+{{- if .Values.certmanager.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.certmanager.secretName }}
+spec:
+  secretName: {{ .Values.certmanager.secretName }}
+  issuerRef:
+    name: {{ .Values.certmanager.issuer }}
+    kind: {{ .Values.certmanager.kind }}
+  dnsNames:
+  {{- range .Values.hosts }}
+    - {{ . }}
+  {{- end }}
+  privateKey:
+    rotationPolicy: Always
+{{- end }}

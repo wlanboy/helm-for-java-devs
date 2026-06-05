@@ -1,0 +1,6 @@
+apiVersion: v2
+name: helloworld
+description: Helm chart for helloworld Spring Boot app with Istio and cert-manager
+type: application
+version: 0.1.0
+appVersion: "latest"
