@@ -51,3 +51,29 @@ logging:
     # ecs = Elastic Common Schema (kompatibel mit Loki, Elasticsearch, Kibana).
     # Alternativen: logstash, gelf
     format: ecs
+
+mysql:
+  external:
+    # Schaltet ServiceEntry + DestinationRule für die externe MySQL-DB ein/aus.
+    enabled: false
+    # Vollständiger Hostname der externen MySQL-DB (DNS-Auflösung durch Istio).
+    host: mysql.extern.gmk.lan
+    # Standard-MySQL-Port.
+    port: 3306
+    tls:
+      # TLS-Origination durch den Istio-Sidecar – die App verbindet sich plain TCP,
+      # der Proxy verschlüsselt die Verbindung zur DB selbständig.
+      enabled: false
+      # SIMPLE = nur Server-Zertifikat prüfen, MUTUAL = Client-Zertifikat erforderlich.
+      mode: SIMPLE
+      # Pfad zum CA-Zertifikat im Sidecar (leer = System-CA-Store).
+      caCertificates: ""
+    connectionPool:
+      # Maximale Anzahl gleichzeitiger TCP-Verbindungen – sollte zum HikariCP-Pool-Size passen.
+      maxConnections: 10
+    # Name der Zieldatenbank.
+    database: mydb
+    # Credentials – in Produktion nicht hier setzen, sondern External Secrets Operator verwenden.
+    # Der Secret-Name im Cluster lautet: <deploymentName>-mysql-secret
+    username: ""
+    password: ""

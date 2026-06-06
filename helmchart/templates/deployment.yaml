@@ -30,6 +30,13 @@ spec:
           env:
           {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- /* envFrom: injiziert alle Key-Value-Paare eines Secrets als Umgebungsvariablen. */ -}}
+          {{- /* Spring Boot übersetzt SPRING_DATASOURCE_* automatisch in spring.datasource.* Properties. */ -}}
+          {{- if .Values.mysql.external.enabled }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.deploymentName }}-mysql-secret
+          {{- end }}
           ports:
             - containerPort: {{ .Values.service.port }}
           {{- /* requests: garantierte Ressourcen (Scheduling-Basis).

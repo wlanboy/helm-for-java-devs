@@ -1,0 +1,22 @@
+{{- if .Values.mysql.external.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: {{ .Values.deploymentName }}-mysql-external
+  namespace: {{ .Values.namespace }}
+spec:
+  {{- /* Hostname unter dem der externe MySQL-Server im Mesh angesprochen wird. */ -}}
+  {{- /* Spring-Datasource-URL: jdbc:mysql://mysql.extern.gmk.lan:3306/mydb */ -}}
+  hosts:
+    - {{ .Values.mysql.external.host }}
+  {{- /* MESH_EXTERNAL: Traffic verlässt das Mesh; kein mTLS zwischen Sidecar und Ziel. */ -}}
+  location: MESH_EXTERNAL
+  ports:
+    - number: {{ .Values.mysql.external.port }}
+      name: tcp-mysql
+      {{- /* TCP statt HTTP – Istio behandelt MySQL-Traffic als opaques TCP-Protokoll. */ -}}
+      protocol: TCP
+  {{- /* DNS: Istio löst den Hostnamen per DNS auf, sinnvoll für externe Hostnamen. */ -}}
+  {{- /* STATIC: Feste IP-Adressen unter .Values.mysql.external.addresses eintragen. */ -}}
+  resolution: DNS
+{{- end }}

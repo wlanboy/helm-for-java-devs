@@ -189,6 +189,90 @@ curl https://helloworld.gmk.lan/control/ready/ok
 
 ---
 
+## Helm Chart — YAML-Architektur
+
+### Ressourcen und ihre Abhängigkeiten
+
+```
+                           ┌──────────────┐
+                           │  values.yaml │  ← einzige Konfigurationsdatei für Deployer
+                           └──────┬───────┘
+                                  │ Helm rendert alle Templates
+         ┌────────────────────────┼──────────────────────────────────┐
+         │                        │                                  │
+         ▼                        ▼                                  ▼
+┌─── TLS ──────────┐   ┌─── Istio Ingress ──────────────┐   ┌─── App ────────────────────────────────────┐
+│                  │   │                                │   │                                            │
+│ certificate.yaml │   │ gateway.yaml                   │   │ configmap.yaml                             │
+│ (cert-manager    │   │ port 443 credentialName ───────────── TLS-Secret                                │
+│  stellt TLS-     │   │ port 80                        │   │ └─ config/application.properties           │
+│  Secret aus)     │   │        │                       │   │      spring.datasource.url                 │
+└──────────────────┘   │        ▼                       │   │             │ volumeMount                  │
+                       │ virtualservice.yaml            │   │             ▼                              │
+                       │ hosts: helloworld.*.lan        │   │ deployment.yaml                            │
+                       │ gateways: gateway + mesh       │   │ ├─ volumeMount ◄──── configmap             │
+                       │        │                       │   │ └─ envFrom    ◄──── mysql-secret.yaml      │
+                       │        ▼ destination           │   │                     SPRING_DATASOURCE_*    │
+                       │ service.yaml                   │   │                                            │
+                       │ port: 8080                     │   │ destinationrule.yaml                       │
+                       │        │ selector: app=...     │   │ circuit breaker für internen Service       │
+                       │        ▼                       │   │                                            │
+                       │      Pod  ◄─────────────────────────(image aus lokaler Registry)                │
+                       └────────────────────────────────┘   └────────────────────────────────────────────┘
+
+                       ┌─── MySQL extern (optional) ────────────────────────────────────────────────────┐
+                       │                                                                                │
+                       │ mysql-serviceentry.yaml              mysql-destinationrule.yaml                │
+                       │ host: mysql.extern.gmk.lan           TLS-Origination (Sidecar → DB)            │
+                       │ protocol: TCP, resolution: DNS       Connection Pool + Circuit Breaker         │
+                       │                                                                                │
+                       └────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Traffic-Fluss zur Laufzeit
+
+```
+Browser
+  │  HTTPS :443
+  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ Istio Gateway  (gateway.yaml)                                       │
+│ TLS-Terminierung — credentialName → Secret vom cert-manager         │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │  entschlüsselter HTTP-Traffic
+                           ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ VirtualService  (virtualservice.yaml)                               │
+│ matched: hosts helloworld.*.lan  →  route zu service.yaml           │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ Service  (service.yaml)  port 8080                                  │
+│                 ↑                                                   │
+│ DestinationRule (destinationrule.yaml)                              │
+│ Circuit Breaker: nach 1× 5xx → Pod 30s aus dem Pool                 │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │  selector: app=helloworld
+                           ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ Pod  (deployment.yaml)                                              │
+│  ├─ /app/config/application.properties  ← ConfigMap (volumeMount)   │
+│  │    spring.datasource.url=jdbc:mysql://mysql.extern.gmk.lan/...   │
+│  └─ SPRING_DATASOURCE_USERNAME/PASSWORD ← Secret   (envFrom)        │
+│                                                                     │
+│  Istio Sidecar (automatisch injiziert)                              │
+│    └─ TLS-Origination für MySQL-Traffic                             │
+│         │  DestinationRule: mysql-destinationrule.yaml              │
+│         │  ServiceEntry:    mysql-serviceentry.yaml                 │
+└─────────────────────────────┬───────────────────────────────────────┘
+                              │  TCP + TLS (Sidecar baut TLS auf)
+                              ▼
+                    mysql.extern.gmk.lan:3306
+```
+
+---
+
 ## Übersicht der Dateien
 
 ```
@@ -199,7 +283,3 @@ java/               Spring Boot Helloworld App (Maven, Jetty, Actuator, Promethe
                     ProbeController: GET /control/health/{ok|notok} und /control/ready/{ok|notok}
 ```
 
-## Hinweise
-
-- **Maven-Image**: Der Task `maven-build` nutzt `maven:3.9-eclipse-temurin-25` (passend zur `<java.version>25</java.version>` im pom.xml).
-- **Kein Re-deploy bei gleichem Tag**: Da das Image-Tag `latest` ist, muss in ArgoCD `selfHeal: true` aktiv sein oder der Deployment-Pod manuell neu gestartet werden (`kubectl rollout restart deployment/helloworld -n helloworld`).
