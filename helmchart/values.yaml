@@ -1,33 +1,53 @@
+# Anzahl der Pod-Instanzen. Mindestens 2 für Zero-Downtime-Deployments (Rolling Update).
 replicaCount: 2
+
+# Basis-Name für alle Kubernetes-Ressourcen (Deployment, Service, ConfigMap).
+# Wird auch als spring.application.name in application.properties gesetzt.
 deploymentName: helloworld
+
+# Kubernetes-Namespace, in dem alle Ressourcen dieses Charts angelegt werden.
 namespace: helloworld
 
 image:
   repository: registry.registry.svc.cluster.local:5000/helloworld
   tag: latest
+  # Always: zieht das Image bei jedem Pod-Start neu – sinnvoll bei tag: latest.
+  # IfNotPresent: nur ziehen wenn lokal nicht vorhanden (besser für stabile Tags wie 1.2.3).
   pullPolicy: Always
 
+# Istio VirtualService: auf welchen Hostnamen die App erreichbar sein soll.
 hosts:
   - helloworld.gmk.lan
   - helloworld.tp.lan
 
 service:
+  # Port des Spring Boot Containers – muss mit server.port in application.properties übereinstimmen.
   port: 8080
 
 istio:
+  # Name des Istio Gateways, der TLS terminiert und Traffic an diesen VirtualService weiterleitet.
   gateway: helloworld-gateway
 
 certmanager:
+  # Schaltet automatische TLS-Zertifikat-Ausstellung via cert-manager ein/aus.
   enabled: true
+  # Name und Art des cert-manager Issuers (ClusterIssuer gilt clusterübergreifend, Issuer nur im Namespace).
   issuer: local-ca-issuer
   kind: ClusterIssuer
+  # Kubernetes Secret, in dem das ausgestellte TLS-Zertifikat abgelegt wird.
   secretName: helloworld-tls
+  # Namespace des Istio Ingress Gateways – dort muss das TLS-Secret liegen, nicht im App-Namespace.
   namespace: istio-ingress
 
+# Erweiterungspunkte: zusätzliche VolumeMounts, Volumes und Umgebungsvariablen
+# ohne das Chart selbst ändern zu müssen (z.B. für Secrets oder Sidecar-Konfiguration).
 extraVolumeMounts: []
 extraVolumes: []
 extraEnv: []
 
 logging:
   structured:
+    # JSON-Logging-Format für Log-Aggregation.
+    # ecs = Elastic Common Schema (kompatibel mit Loki, Elasticsearch, Kibana).
+    # Alternativen: logstash, gelf
     format: ecs
