@@ -74,8 +74,8 @@ mysql:
       # Maximale Anzahl gleichzeitiger TCP-Verbindungen – sollte zum HikariCP-Pool-Size passen.
       maxConnections: 10
     # Name der Zieldatenbank.
-    database: mydb
+    database: restclient
     # Credentials – in Produktion nicht hier setzen, sondern External Secrets Operator verwenden.
     # Der Secret-Name im Cluster lautet: <deploymentName>-mysql-secret
-    username: ""
+    username: "restclient"
     password: ""
