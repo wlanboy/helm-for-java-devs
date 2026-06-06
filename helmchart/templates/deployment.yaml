@@ -67,8 +67,10 @@ spec:
             httpGet:
               path: /actuator/health/liveness
               port: {{ .Values.service.port }}
-            failureThreshold: 6
+            initialDelaySeconds: 10
+            failureThreshold: 30
             periodSeconds: 10
+            timeoutSeconds: 5
           # livenessProbe: schlägt sie fehl, wird der Pod neu gestartet (Deadlock-Erkennung).
           livenessProbe:
             httpGet:
