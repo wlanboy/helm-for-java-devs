@@ -11,6 +11,9 @@ spec:
     metadata:
       labels:
         app: {{ .Values.deploymentName }}
+        app.kubernetes.io/name: {{ .Values.deploymentName }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/version: {{ .Values.image.tag }}
     spec:
       containers:
         - name: {{ .Values.deploymentName }}
