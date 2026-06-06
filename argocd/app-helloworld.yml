@@ -2,26 +2,36 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: helloworld
+  # ArgoCD Applications müssen im argocd-Namespace liegen, unabhängig vom Ziel-Namespace der App.
   namespace: argocd
 spec:
+  # Projekt begrenzt erlaubte Repos, Cluster und Namespaces – definiert in helloteam-project.yaml.
   project: helloteam
 
   source:
     repoURL: https://github.com/wlanboy/helm-for-java-devs.git
+    # targetRevision: Branch, Tag oder Commit-SHA. "main" bedeutet immer der neueste Stand des Branches.
     targetRevision: main
+    # Pfad zum Helm Chart innerhalb des Repos.
     path: helmchart
     helm:
+      # releaseName: Name des Helm Releases – entspricht .Release.Name in den Templates.
       releaseName: helloworld
       valueFiles:
         - values.yaml
 
   destination:
+    # kubernetes.default.svc = der Cluster, in dem ArgoCD selbst läuft (in-cluster Deployment).
     server: https://kubernetes.default.svc
     namespace: helloworld
 
   syncPolicy:
     automated:
+      # prune: von Git gelöschte Ressourcen werden auch im Cluster gelöscht.
       prune: true
+      # selfHeal: manuelle Änderungen im Cluster werden automatisch auf den Git-Stand zurückgesetzt.
       selfHeal: true
     syncOptions:
+      # CreateNamespace=false: Namespace muss vorab existieren (siehe hello-namespace.yml).
+      # Verhindert dass ArgoCD den Namespace ohne Istio-Label anlegt.
       - CreateNamespace=false

@@ -3,4 +3,6 @@ kind: Namespace
 metadata:
   name: helloworld
   labels:
+    # Aktiviert automatische Istio Sidecar-Injection für alle Pods in diesem Namespace.
+    # Muss vor dem ersten Deployment gesetzt sein – laufende Pods werden nicht nachträglich injiziert.
     istio-injection: enabled
