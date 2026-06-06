@@ -43,7 +43,7 @@ spec:
           # limits: harte Obergrenze – CPU wird gedrosselt, Memory-Überschreitung killt den Pod.
           resources:
             requests:
-              cpu: "200m"
+              cpu: "300m"
               memory: "256Mi"
             limits:
               cpu: "500m"
