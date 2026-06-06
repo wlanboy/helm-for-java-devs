@@ -1,0 +1,12 @@
+services:
+  db:
+    image: mysql:latest
+    container_name: mysql-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: mysql
+      MYSQL_DATABASE: restdata
+      MYSQL_USER: restdata
+      MYSQL_PASSWORD: restdata
+    ports:
+      - "3306:3306"
