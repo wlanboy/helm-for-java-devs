@@ -78,4 +78,4 @@ mysql:
     # Credentials – in Produktion nicht hier setzen, sondern External Secrets Operator verwenden.
     # Der Secret-Name im Cluster lautet: <deploymentName>-mysql-secret
     username: "restdata"
-    password: ""
+    password: "restdata"
