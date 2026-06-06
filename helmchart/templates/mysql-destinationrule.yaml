@@ -8,22 +8,16 @@ spec:
   # Muss exakt dem Host aus dem ServiceEntry entsprechen.
   host: {{ .Values.mysql.external.host }}
   trafficPolicy:
+    {{- if .Values.mysql.external.tls.enabled }}
     portLevelSettings:
       - port:
           number: {{ .Values.mysql.external.port }}
-        # TLS-Origination: der Sidecar-Proxy baut TLS zur externen MySQL-DB auf.
-        # Der Java-Anwendung gegenüber bleibt die Verbindung unverschlüsselt (plain TCP).
-        {{- if .Values.mysql.external.tls.enabled }}
         tls:
-          # SIMPLE: einseitiges TLS – Server-Zertifikat wird geprüft, kein Client-Zertifikat.
-          # MUTUAL: gegenseitiges TLS – nur wenn die MySQL-DB Client-Zertifikate verlangt.
           mode: {{ .Values.mysql.external.tls.mode }}
-          # caCertificates: Pfad zum CA-Bundle im Sidecar-Container für Zertifikatsprüfung.
-          # Leer lassen um dem System-CA-Store zu vertrauen (z.B. bei öffentlich signierten Certs).
           {{- if .Values.mysql.external.tls.caCertificates }}
           caCertificates: {{ .Values.mysql.external.tls.caCertificates }}
           {{- end }}
-        {{- end }}
+    {{- end }}
     connectionPool:
       tcp:
         # Maximale parallele TCP-Verbindungen zur MySQL-DB – begrenzt Connection-Pool-Größe.
