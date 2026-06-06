@@ -3,12 +3,12 @@ kind: Service
 metadata:
   name: {{ .Values.deploymentName }}
 spec:
-  {{- /* Selektiert Pods anhand des app-Labels – muss mit dem Label im Deployment übereinstimmen. */ -}}
+  # Selektiert Pods anhand des app-Labels – muss mit dem Label im Deployment übereinstimmen.
   selector:
     app: {{ .Values.deploymentName }}
   ports:
     - name: http
-      {{- /* Externer Port des Services (für VirtualService und ServiceMonitor). */ -}}
+      # Externer Port des Services (für VirtualService und ServiceMonitor).
       port: {{ .Values.service.port }}
-      {{- /* Interner Port des Containers – muss mit server.port in application.properties übereinstimmen. */ -}}
+      # Interner Port des Containers – muss mit server.port in application.properties übereinstimmen.
       targetPort: {{ .Values.service.port }}
