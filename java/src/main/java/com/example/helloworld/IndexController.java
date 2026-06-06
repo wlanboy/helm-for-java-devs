@@ -44,6 +44,7 @@ public class IndexController {
                   <h2>Info</h2>
                   <ul>
                     <li><a href="/application">/application</a></li>
+                    <li><a href="/db">/db</a></li>
                   </ul>
                   <h2>Probes</h2>
                   <ul>
