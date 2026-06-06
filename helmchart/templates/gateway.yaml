@@ -3,9 +3,11 @@ kind: Gateway
 metadata:
   name: {{ .Values.istio.gateway }}
 spec:
+  {{- /* Bindet diesen Gateway an den Istio Ingress Gateway Pod (Label istio=ingressgateway). */ -}}
   selector:
     istio: ingressgateway
   servers:
+    {{- /* HTTPS-Listener wird nur angelegt wenn ein TLS-Zertifikat via cert-manager bereitsteht. */ -}}
     {{- if .Values.certmanager.enabled }}
     - port:
         number: 443
@@ -16,9 +18,12 @@ spec:
         - {{ . }}
       {{- end }}
       tls:
+        {{- /* SIMPLE: TLS wird am Gateway terminiert; intern läuft Traffic unverschlüsselt (mTLS via Istio). */ -}}
         mode: SIMPLE
+        {{- /* Referenz auf das Secret, das cert-manager im Istio-Namespace ablegt. */ -}}
         credentialName: {{ .Values.certmanager.secretName }}
     {{- end }}
+    {{- /* HTTP-Listener immer aktiv – ermöglicht Redirects oder Zugriff ohne TLS. */ -}}
     - port:
         number: 80
         name: http
@@ -26,4 +31,4 @@ spec:
       hosts:
       {{- range .Values.hosts }}
         - {{ . }}
-      {{- end }}    
+      {{- end }}

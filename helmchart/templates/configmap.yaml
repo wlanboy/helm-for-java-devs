@@ -4,4 +4,5 @@ metadata:
   name: {{ .Values.deploymentName }}-config
 data:
   application.properties: |
+    {{- /* tpl wertet Helm-Variablen (z.B. .Values.*) innerhalb der Properties-Datei aus. */ -}}
 {{ tpl (.Files.Get "config/application.properties") . | indent 4 }}

@@ -1,18 +1,24 @@
+{{- /* Wird nur angelegt wenn certmanager.enabled=true – sonst kein TLS-Zertifikat nötig (z.B. lokale Entwicklung). */ -}}
 {{- if .Values.certmanager.enabled }}
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
+  {{- /* Secret-Name als Ressourcenname – muss mit credentialName im Gateway übereinstimmen. */ -}}
   name: {{ .Values.certmanager.secretName }}
+  {{- /* Muss im Namespace des Istio Ingress Gateways liegen, damit Istio das TLS-Secret lesen kann. */ -}}
   namespace: {{ .Values.certmanager.namespace }}
 spec:
   secretName: {{ .Values.certmanager.secretName }}
   issuerRef:
     name: {{ .Values.certmanager.issuer }}
+    {{- /* ClusterIssuer gilt clusterübergreifend; Issuer nur im eigenen Namespace. */ -}}
     kind: {{ .Values.certmanager.kind }}
   dnsNames:
+  {{- /* Zertifikat gilt für alle konfigurierten Hostnamen (SAN-Zertifikat). */ -}}
   {{- range .Values.hosts }}
     - {{ . }}
   {{- end }}
   privateKey:
+    {{- /* Always: cert-manager erneuert den privaten Schlüssel bei jedem Zertifikats-Renewal. */ -}}
     rotationPolicy: Always
 {{- end }}

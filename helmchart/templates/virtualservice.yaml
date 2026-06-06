@@ -3,20 +3,25 @@ kind: VirtualService
 metadata:
   name: {{ .Values.deploymentName }}-sv
 spec:
+  {{- /* Hostnamen für die dieser VirtualService Traffic annimmt – muss mit Gateway-Hosts übereinstimmen. */ -}}
   hosts:
   {{- range .Values.hosts }}
     - {{ . }}
   {{- end }}
+  {{- /* Sichtbarkeit: "." = eigener Namespace; weitere Namespaces damit der Gateway-Namespace routen kann. */ -}}
   exportTo:
   - "."
   - istio-ingress
   - istio-system
   gateways:
+    {{- /* Eingehender Traffic vom Istio Ingress Gateway (extern). */ -}}
     - {{ .Values.istio.gateway }}
+    {{- /* "mesh" = interner Service-zu-Service Traffic innerhalb des Clusters. */ -}}
     - mesh
   http:
     - route:
         - destination:
+            {{- /* Ziel-Service – Istio leitet an den Kubernetes Service mit diesem Namen weiter. */ -}}
             host: {{ .Values.deploymentName }}
             port:
               number: {{ .Values.service.port }}

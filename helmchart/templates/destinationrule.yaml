@@ -3,9 +3,14 @@ kind: DestinationRule
 metadata:
   name: {{ .Values.deploymentName }}-dr
 spec:
+  {{- /* Interner Kubernetes-Servicename – Istio wendet diese Regel auf Traffic an diesen Service an. */ -}}
   host: {{ .Values.deploymentName }}
   trafficPolicy:
+    {{- /* Circuit Breaker: fehlerhafte Pods werden temporär aus dem Load-Balancing-Pool entfernt. */ -}}
     outlierDetection:
+      {{- /* Nach 1 aufeinanderfolgenden 5xx-Fehlern wird der Pod als fehlerhaft markiert. */ -}}
       consecutive5xxErrors: 1
+      {{- /* Prüfintervall – wie oft Istio die Fehlerrate je Pod auswertet. */ -}}
       interval: 10s
+      {{- /* Wie lange ein fehlerhafter Pod aus dem Pool ausgeschlossen bleibt. */ -}}
       baseEjectionTime: 30s
