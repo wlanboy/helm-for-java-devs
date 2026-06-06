@@ -47,6 +47,8 @@ extraEnv: []
 
 logging:
   structured:
+    # Schaltet JSON-Logging ein/aus. false = normaler Text (lokale Entwicklung), true = JSON (Produktion).
+    enabled: false
     # JSON-Logging-Format für Log-Aggregation.
     # ecs = Elastic Common Schema (kompatibel mit Loki, Elasticsearch, Kibana).
     # Alternativen: logstash, gelf
