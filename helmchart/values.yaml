@@ -73,6 +73,11 @@ mysql:
     connectionPool:
       # Maximale Anzahl gleichzeitiger TCP-Verbindungen – sollte zum HikariCP-Pool-Size passen.
       maxConnections: 10
+    # DNS: Istio löst den Hostnamen per DNS auf – CoreDNS muss den Namen kennen.
+    # STATIC: Istio nutzt die feste IP aus address – kein DNS im Cluster nötig (z.B. Kind).
+    resolution: STATIC
+    # Statische IP – nur relevant wenn resolution: STATIC.
+    address: "192.168.178.91"
     # Name der Zieldatenbank.
     database: restdata
     # Credentials – in Produktion nicht hier setzen, sondern External Secrets Operator verwenden.
