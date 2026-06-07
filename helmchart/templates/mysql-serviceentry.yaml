@@ -16,7 +16,9 @@ spec:
       name: tcp-mysql
       # TCP statt HTTP – Istio behandelt MySQL-Traffic als opaques TCP-Protokoll.
       protocol: TCP
-  # DNS: Istio löst den Hostnamen per DNS auf, sinnvoll für externe Hostnamen.
-  # STATIC: Feste IP-Adressen unter .Values.mysql.external.addresses eintragen.
-  resolution: DNS
+  resolution: {{ .Values.mysql.external.resolution }}
+  {{- if eq .Values.mysql.external.resolution "STATIC" }}
+  endpoints:
+    - address: {{ required "mysql.external.address muss gesetzt sein wenn resolution: STATIC" .Values.mysql.external.address }}
+  {{- end }}
 {{- end }}
