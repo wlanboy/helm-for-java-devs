@@ -1,6 +1,11 @@
 # Helm for Java Devs — Schritt-für-Schritt-Anleitung
 
+Eine vollständige Kubernetes Pipeline für eine Spring Boot App in einem Container.
 Spring Boot Helloworld App → Tekton baut das Image → lokale k3s-Registry → ArgoCD deployt per Helm.
+
+Verwendet ConfigMap, Secrets, SSL Certificate, Istio Gateway, VirtualService, HealthChecks, Readness Checks.
+ServiceEntry und DestinationRule für eine externe Datenbankabhängigkeit.
+Hat ein Feature Flag für den Wechsel von h2 auf MySQL.
 
 ## Voraussetzungen
 
