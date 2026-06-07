@@ -77,7 +77,7 @@ mysql:
     # STATIC: Istio nutzt die feste IP aus address – kein DNS im Cluster nötig (z.B. Kind).
     resolution: STATIC
     # Statische IP – nur relevant wenn resolution: STATIC.
-    address: "192.168.178.91"
+    address: "172.19.0.1" # Docker-Bridge-IP
     # Name der Zieldatenbank.
     database: restdata
     # Credentials – in Produktion nicht hier setzen, sondern External Secrets Operator verwenden.
