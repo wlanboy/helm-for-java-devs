@@ -194,6 +194,50 @@ curl https://helloworld.gmk.lan/control/ready/ok
 
 ---
 
+## Helm Chart — Manuelle Befehle
+
+### Testen (lokal rendern, kein Deployment)
+
+```bash
+# Chart auf Syntaxfehler prüfen
+helm lint helmchart/
+
+# Templates rendern und ausgeben (kein Cluster nötig)
+helm template helloworld helmchart/ --namespace helloworld
+
+# Dry-run gegen den Cluster (validiert auch gegen die Kubernetes API)
+helm install helloworld helmchart/ --namespace helloworld --create-namespace --dry-run
+```
+
+### Deployen
+
+```bash
+# Erstinstallation
+helm install helloworld helmchart/ --namespace helloworld --create-namespace
+
+# Update (auch für Erstinstallation verwendbar)
+helm upgrade --install helloworld helmchart/ --namespace helloworld --create-namespace
+```
+
+### Status prüfen
+
+```bash
+helm status helloworld --namespace helloworld
+helm list --namespace helloworld
+```
+
+### Löschen
+
+```bash
+# Release entfernen (Namespace bleibt erhalten)
+helm uninstall helloworld --namespace helloworld
+
+# Namespace ebenfalls löschen
+kubectl delete namespace helloworld
+```
+
+---
+
 ## Helm Chart — YAML-Architektur
 
 ### Ressourcen und ihre Abhängigkeiten
@@ -278,13 +322,70 @@ Browser
 
 ---
 
+## MySQL extern — TLS-Origination mit eigenem CA-Zertifikat
+
+Der Istio-Sidecar kann die TCP-Verbindung zur externen MySQL-DB verschlüsseln (TLS-Origination).
+Die App selbst spricht plain TCP — der Proxy baut TLS auf.
+
+### Aktivierung in `values.yaml`
+
+```yaml
+mysql:
+  external:
+    enabled: true
+    tls:
+      enabled: true
+      mode: SIMPLE          # nur Server-Zertifikat prüfen (kein Client-Cert)
+      credentialName: mysql-ca-cert   # Name des Kubernetes Secrets
+      createCaSecret: true  # Helm erstellt das Secret automatisch aus ca/ca-gmk.pem
+```
+
+### Wie es funktioniert
+
+| Wert | Effekt |
+|---|---|
+| `tls.enabled: true` | Aktiviert `portLevelSettings` in der DestinationRule |
+| `tls.mode: SIMPLE` | Nur Server-Zertifikat wird geprüft (kein mTLS) |
+| `tls.credentialName` | Istio liest das CA-Zertifikat aus diesem Kubernetes Secret (Key: `cacert`) |
+| `tls.createCaSecret: true` | Helm erzeugt das Secret aus `ca/ca-gmk.pem` im Chart-Verzeichnis |
+| `tls.createCaSecret: false` | Secret muss manuell oder per External Secrets Operator bereitgestellt werden |
+
+### Secret manuell anlegen (wenn `createCaSecret: false`)
+
+```bash
+kubectl create secret generic mysql-ca-cert \
+  --from-file=cacert=ca/ca-gmk.pem \
+  -n helloworld
+```
+
+### Beteiligte Ressourcen
+
+```
+ca/ca-gmk.pem  (im Chart-Verzeichnis)
+      │  createCaSecret: true
+      ▼
+mysql-ca-secret.yaml  →  Secret "mysql-ca-cert"  (key: cacert)
+                                   │  credentialName
+                                   ▼
+mysql-destinationrule.yaml  →  tls.credentialName: mysql-ca-cert
+                                   │  Istio liest CA direkt aus dem Secret
+                                   ▼
+              Sidecar baut TLS zur MySQL auf — App bleibt plain TCP
+```
+
+---
+
 ## Übersicht der Dateien
 
 ```
 helmchart/          Helm Chart (Deployment, Service, ConfigMap, Istio Gateway/VS, cert-manager Certificate)
+  templates/
+    mysql-ca-secret.yaml     Secret mit CA-Zertifikat für TLS-Origination (via createCaSecret)
+    mysql-destinationrule.yaml  DestinationRule mit credentialName für externe MySQL
 argocd/             ArgoCD AppProject, Application, Cluster-Secret, Namespace
 tekton/             Pipeline, Tasks (maven-build, kaniko), ServiceAccount, PipelineRun
 java/               Spring Boot Helloworld App (Maven, Jetty, Actuator, Prometheus)
                     ProbeController: GET /control/health/{ok|notok} und /control/ready/{ok|notok}
+ca/                 CA-Zertifikate für TLS-Origination (wird in mysql-ca-secret.yaml eingebettet)
 ```
 
