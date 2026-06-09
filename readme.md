@@ -216,7 +216,7 @@ helm install helloworld helmchart/ --namespace helloworld --create-namespace --d
 helm install helloworld helmchart/ --namespace helloworld --create-namespace
 
 # Update (auch für Erstinstallation verwendbar)
-helm upgrade --install helloworld helmchart/ --namespace helloworld --create-namespace
+helm upgrade --install helloworld helmchart/ --namespace helloworld
 ```
 
 ### Status prüfen
