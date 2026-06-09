@@ -33,3 +33,6 @@ spec:
 
   timeouts:
     pipeline: 1h0m0s
+
+  retentionPolicy:
+    ttlAfterCompletion: 72h0m0s
