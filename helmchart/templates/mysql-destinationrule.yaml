@@ -14,8 +14,8 @@ spec:
           number: {{ .Values.mysql.external.port }}
         tls:
           mode: {{ .Values.mysql.external.tls.mode }}
-          {{- if .Values.mysql.external.tls.caCertificates }}
-          caCertificates: {{ .Values.mysql.external.tls.caCertificates }}
+          {{- if .Values.mysql.external.tls.createCaSecret }}
+          credentialName: {{ .Values.mysql.external.tls.credentialName }}
           {{- end }}
     {{- end }}
     connectionPool:

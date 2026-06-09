@@ -68,8 +68,11 @@ mysql:
       enabled: false
       # SIMPLE = nur Server-Zertifikat prüfen, MUTUAL = Client-Zertifikat erforderlich.
       mode: SIMPLE
-      # Pfad zum CA-Zertifikat im Sidecar (leer = System-CA-Store).
-      caCertificates: ""
+      # Name eines Kubernetes Secrets mit dem CA-Zertifikat (key: cacert).
+      credentialName: mysql-ca-cert
+      # true = Helm erstellt das Secret automatisch aus ca/ca-gmk.pem.
+      # false = Secret muss manuell angelegt werden (z.B. via External Secrets Operator).
+      createCaSecret: false
     connectionPool:
       # Maximale Anzahl gleichzeitiger TCP-Verbindungen – sollte zum HikariCP-Pool-Size passen.
       maxConnections: 10
