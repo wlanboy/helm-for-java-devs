@@ -1,4 +1,4 @@
-FROM eclipse-temurin:25-jdk AS builder
+FROM maven:3-eclipse-temurin-25 AS builder
 WORKDIR /app
 COPY pom.xml .
 RUN --mount=type=cache,target=/root/.m2 mvn -q dependency:go-offline
