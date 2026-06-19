@@ -21,39 +21,15 @@ Folgendes muss im k3s-Cluster installiert sein:
 
 ---
 
-## Schritt 1 — Lokale Registry in k3s konfigurieren
+## Schritt — Tekton-Ressourcen installieren
 
-Damit k3s Images aus der lokalen Registry ziehen kann, muss die Mirror-Konfiguration gesetzt werden:
-
-```yaml
-# /etc/rancher/k3s/registries.yaml
-mirrors:
-  "registry.registry.svc.cluster.local:5000":
-    endpoint:
-      - "http://registry.registry.svc.cluster.local:5000"
-configs:
-  "registry.registry.svc.cluster.local:5000":
-    tls:
-      insecure_skip_verify: true
-```
-
-k3s neu starten:
-
-```bash
-sudo systemctl restart k3s
-```
-
----
-
-## Schritt 2 — Tekton-Ressourcen installieren
-
-### 2.1 git-clone Task aus dem Tekton-Katalog installieren
+### git-clone Task aus dem Tekton-Katalog installieren
 
 ```bash
 kubectl apply -f tekton/git-clone.yaml
 ```
 
-### 2.2 Eigene Tasks und Pipeline installieren
+### Eigene Tasks und Pipeline installieren
 
 ```bash
 kubectl apply -f tekton/serviceaccount.yaml
@@ -64,7 +40,7 @@ kubectl apply -f tekton/pipeline.yml
 
 ---
 
-## Schritt 3 — Pipeline starten
+## Pipeline starten
 
 ```bash
 kubectl create -f tekton/pipeline-run.yml
@@ -92,7 +68,7 @@ Der Run durchläuft drei Schritte:
 
 ---
 
-## Schritt 4 — Image in der Registry prüfen
+## Image in der Registry prüfen
 
 ```bash
 kubectl run registry-check --image=curlimages/curl --restart=Never --rm -it -- \
@@ -103,7 +79,7 @@ Erwartet: `{"name":"helloworld","tags":["latest"]}`
 
 ---
 
-## Schritt 5 — Namespace und ArgoCD vorbereiten
+## Namespace und ArgoCD vorbereiten
 
 ```bash
 # Namespace mit Istio-Sidecar-Injection anlegen
@@ -121,7 +97,7 @@ kubectl apply -f argocd/app-helloworld.yml
 
 ---
 
-## Schritt 6 — ArgoCD-Sync auslösen
+## ArgoCD-Sync auslösen
 
 ArgoCD erkennt Änderungen im Git-Repository automatisch (auto-sync ist aktiv).
 
@@ -145,7 +121,7 @@ Alternativ direkt im ArgoCD-UI: https://argocd.gmk.lan oder https://argocd.tp.la
 
 ---
 
-## Schritt 7 — Deployment prüfen
+## Deployment prüfen
 
 ```bash
 kubectl get pods -n helloworld
@@ -153,20 +129,18 @@ kubectl get certificate -n helloworld
 kubectl get gateway -n helloworld
 ```
 
-App über den Istio-Ingress erreichbar unter `https://helloworld.gmk.lan` oder `https://helloworld.tp.lan`.
+App über den Istio-Ingress erreichbar unter `https://helloworld.tp.lan`.
 
 Health-Endpoint prüfen:
 
 ```bash
-curl https://helloworld.gmk.lan/actuator/health
 curl https://helloworld.tp.lan/actuator/health
 ```
 
 Liveness- und Readiness-Status einzeln abrufen:
 
 ```bash
-curl https://helloworld.gmk.lan/actuator/health/liveness
-curl https://helloworld.gmk.lan/actuator/health/readiness
+curl https://helloworld.tp.lan/actuator/health/readiness
 ```
 
 ### Probe-Status manuell steuern
@@ -182,14 +156,14 @@ Der `ProbeController` erlaubt es, den Liveness- und Readiness-Zustand per GET-Re
 
 ```bash
 # Liveness auf "not ok" setzen → Kubernetes startet den Pod neu
-curl https://helloworld.gmk.lan/control/health/notok
+curl https://helloworld.tp.lan/control/health/notok
 
 # Readiness auf "not ok" setzen → Kubernetes nimmt den Pod aus dem Load Balancer
-curl https://helloworld.gmk.lan/control/ready/notok
+curl https://helloworld.tp.lan/control/ready/notok
 
 # Wieder auf ok setzen
-curl https://helloworld.gmk.lan/control/health/ok
-curl https://helloworld.gmk.lan/control/ready/ok
+curl https://helloworld.tp.lan/control/health/ok
+curl https://helloworld.tp.lan/control/ready/ok
 ```
 
 ---
