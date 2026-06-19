@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   # Hostname unter dem der externe MySQL-Server im Mesh angesprochen wird.
-  # Spring-Datasource-URL: jdbc:mysql://mysql.extern.gmk.lan:3306/mydb
+  # Spring-Datasource-URL: jdbc:mysql://mysql.extern.big.lan:3306/mydb
   hosts:
     - {{ .Values.mysql.external.host }}
   # MESH_EXTERNAL: Traffic verlässt das Mesh; kein mTLS zwischen Sidecar und Ziel.

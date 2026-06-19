@@ -17,8 +17,8 @@ image:
 
 # Istio VirtualService: auf welchen Hostnamen die App erreichbar sein soll.
 hosts:
-  - helloworld.gmk.lan
   - helloworld.tp.lan
+  - helloworld.big.lan
 
 service:
   # Port des Spring Boot Containers – muss mit server.port in application.properties übereinstimmen.
@@ -59,7 +59,7 @@ mysql:
     # Schaltet ServiceEntry + DestinationRule für die externe MySQL-DB ein/aus.
     enabled: false
     # Vollständiger Hostname der externen MySQL-DB (DNS-Auflösung durch Istio).
-    host: mysql.extern.gmk.lan
+    host: mysql.extern.big.lan
     # Standard-MySQL-Port.
     port: 3306
     tls:
