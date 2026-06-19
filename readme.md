@@ -71,7 +71,7 @@ Erwartet: `{"name":"helloworld","tags":["latest"]}`
 
 ```bash
 # ArgoCD-Application anlegen
-kubectl apply -f argocd/app-namespace.yml
+kubectl apply -f argocd/hello-namespace.yml
 kubectl apply -f argocd/app-helloworld.yml
 ```
 
@@ -89,15 +89,13 @@ kubectl get secret argocd-initial-admin-secret -n argocd \
   -o jsonpath='{.data.password}' | base64 -d
 
 # Einloggen
-argocd login argocd.gmk.lan --username admin
-# oder
 argocd login argocd.tp.lan --username admin
 
 # Sync auslösen
 argocd app sync helloworld
 ```
 
-Alternativ direkt im ArgoCD-UI: https://argocd.gmk.lan oder https://argocd.tp.lan → Projekt `helloteam` → Application `helloworld`.
+Alternativ direkt im ArgoCD-UI: https://argocd.tp.lan → Projekt `helloteam` → Application `helloworld`.
 
 ---
 
