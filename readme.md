@@ -7,18 +7,6 @@ Verwendet ConfigMap, Secrets, SSL Certificate, Istio Gateway, VirtualService, He
 ServiceEntry und DestinationRule für eine externe Datenbankabhängigkeit.
 Hat ein Feature Flag für den Wechsel von h2 auf MySQL.
 
-## Voraussetzungen
-
-Folgendes muss im k3s-Cluster installiert sein:
-
-| Komponente | Zweck |
-|---|---|
-| [Tekton Pipelines](https://tekton.dev/docs/installation/pipelines/) | CI-Pipeline |
-| [ArgoCD](https://argo-cd.readthedocs.io/en/stable/getting_started/) | GitOps-Deployment |
-| [cert-manager](https://cert-manager.io/docs/installation/) | TLS-Zertifikate |
-| [Istio](https://istio.io/latest/docs/setup/install/) | Ingress Gateway |
-| Registry (z.B. `registry:2`) | Lokales Image-Repository im `kube-system` Namespace |
-
 ---
 
 ## Schritt — Tekton-Ressourcen installieren
@@ -82,16 +70,8 @@ Erwartet: `{"name":"helloworld","tags":["latest"]}`
 ## Namespace und ArgoCD vorbereiten
 
 ```bash
-# Namespace mit Istio-Sidecar-Injection anlegen
-kubectl apply -f argocd/hello-namespace.yml
-
-# Cluster-Secret in ArgoCD registrieren
-kubectl apply -f argocd/cluster-hello.yml
-
-# ArgoCD-Projekt anlegen
-kubectl apply -f argocd/helloteam-project.yaml
-
 # ArgoCD-Application anlegen
+kubectl apply -f argocd/app-namespace.yml
 kubectl apply -f argocd/app-helloworld.yml
 ```
 
