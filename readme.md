@@ -189,3 +189,13 @@ kubectl delete namespace helloworld
 ```
 
 ---
+
+
+### DNS überprüfen
+
+``bash
+kubectl run test -it --rm --image=busybox -n default --restart=Never -- sh
+
+kubectl run dnstest -it --rm --image=busybox --restart=Never -n default -- nslookup mysql.extern.big.lan
+kubectl run dnstest -it --rm --image=busybox --restart=Never -n helloworld -- nslookup mysql.extern.big.lan
+``
