@@ -9,6 +9,38 @@ Hat ein Feature Flag für den Wechsel von h2 auf MySQL.
 
 ---
 
+## Schritt — Vorbereitung: Workshop-Homepage
+
+Alle notwendigen Dateien, Zugangsdaten und Installationsanleitungen sind über die Workshop-Homepage abrufbar:
+
+**http://homepage.big.lan/**
+
+Die Seite ist in folgende Tabs gegliedert:
+
+| Tab | Inhalt |
+|---|---|
+| **Cluster** | Cluster-IP-Adressen, ArgoCD-URL mit Zugangsdaten, ArgoCD-CLI-Login |
+| **kubectl** | `kubeconfig.yaml` herunterladen und einrichten (Linux / macOS / Windows) |
+| **Apps** | Direkte Links zur `helloworld`- und `demo`-App |
+| **Registry** | Registry-URL (`registry.big.lan`), Image bauen und pushen, Insecure-Registry-Konfiguration |
+| **CA-Zertifikat** | Workshop-CA-Zertifikat (`ca.pem`) herunterladen und im System sowie in Docker hinterlegen |
+| **Maven** | Nexus-Cache (`maven.big.lan:8081`), `settings.xml` herunterladen und einrichten |
+| **Tools** | Download-Anleitungen für `kubectl`, `argocd`, `helm` und `tkn` (Tekton CLI) |
+| **Spring MCP** | Spring Boot MCP-Server aufbauen (Spring AI, `@Tool`-Annotation, SSE-Transport) |
+
+### Empfohlene Reihenfolge zur Vorbereitung
+
+1. **kubeconfig** herunterladen (Tab *kubectl*) und `KUBECONFIG` setzen
+2. **CA-Zertifikat** installieren (Tab *CA-Zertifikat*) — für Browser, kubectl und Docker
+3. **Maven settings.xml** nach `~/.m2/` kopieren (Tab *Maven*) — nutzt den lokalen Nexus-Cache
+4. **Tools** installieren: `kubectl`, `argocd`, `helm`, `tkn` (Tab *Tools*)
+5. Verbindung testen:
+   ```bash
+   kubectl get nodes
+   ```
+
+---
+
 ## Schritt — Tekton-Ressourcen installieren
 
 ### git-clone Task aus dem Tekton-Katalog installieren
