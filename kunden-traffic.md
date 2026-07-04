@@ -3,7 +3,7 @@
 Der Chart deployt **zwei Versionen** derselben App parallel (`values.yaml` → `versions`), um Istio
 Source-Namespace-Routing zu demonstrieren (Details siehe [`request-routing/istio-routing.md`](request-routing/istio-routing.md)):
 
-| Version | `sourceNamespace` | ConfigMap | `info.app.version-label` |
+| Version | `sourceNamespace` | ConfigMap | `app.version-label` |
 |---|---|---|---|
 | `extern` | `testclientextern` | `helloworld-config-extern` | `extern` |
 | `intern` | `testclientintern` | `helloworld-config-intern` | `intern` |
@@ -31,29 +31,29 @@ kubectl label namespace testclientintern istio-injection=enabled
 ## Routing mit einem busybox-Pod testen
 
 `busybox` hat kein `curl`, aber `wget` reicht für den Test. Pro Testclient-Namespace ein Pod, der
-den `/actuator/info`-Endpunkt des Services abruft:
+den fachlichen `/version`-Endpunkt (`VersionController`) des Services abruft:
 
 ```bash
-# Aufruf aus testclientextern → erwartet version-label "extern"
+# Aufruf aus testclientextern → erwartet versionLabel "extern"
 kubectl run testclient -n testclientextern --image=busybox --restart=Never --rm -it -- \
-  wget -qO- http://helloworld.helloworld.svc.cluster.local:8080/actuator/info
+  wget -qO- http://helloworld.helloworld.svc.cluster.local:8080/version
 
-# Aufruf aus testclientintern → erwartet version-label "intern"
+# Aufruf aus testclientintern → erwartet versionLabel "intern"
 kubectl run testclient -n testclientintern --image=busybox --restart=Never --rm -it -- \
-  wget -qO- http://helloworld.helloworld.svc.cluster.local:8080/actuator/info
+  wget -qO- http://helloworld.helloworld.svc.cluster.local:8080/version
 ```
 
 Erwartete Ausgabe (Auszug):
 
 ```json
-{"app":{"version-label":"extern"}}
+{"versionLabel":"extern","pod":"helloworld-extern-..."}
 ```
 
-bzw. `"version-label":"intern"` für den zweiten Aufruf. Zum Vergleich: der externe Ingress-Aufruf
+bzw. `"versionLabel":"intern"` für den zweiten Aufruf. Zum Vergleich: der externe Ingress-Aufruf
 landet immer auf `extern`:
 
 ```bash
-curl https://helloworld.tp.lan/actuator/info
+curl https://helloworld.tp.lan/version
 ```
 
 > Läuft der Pod ohne Sidecar (z.B. weil das Namespace-Label fehlte, bevor der Pod gestartet wurde),
