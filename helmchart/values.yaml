@@ -17,6 +17,7 @@ image:
 
 # Istio VirtualService: auf welchen Hostnamen die App erreichbar sein soll.
 hosts:
+  - helloworld.gmk.lan
   - helloworld.tp.lan
   - helloworld.big.lan
 
