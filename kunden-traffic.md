@@ -1,7 +1,6 @@
 # Zwei Versionen: intern/extern (Source-Namespace-Routing)
 
-Der Chart deployt **zwei Versionen** derselben App parallel (`values.yaml` → `versions`), um Istio
-Source-Namespace-Routing zu demonstrieren (Details siehe [`request-routing/istio-routing.md`](request-routing/istio-routing.md)):
+Der Chart deployt **zwei Versionen** derselben App parallel (`values.yaml` → `versions`), um Istio Source-Namespace-Routing zu demonstrieren.
 
 | Version | `sourceNamespace` | ConfigMap | `app.version-label` |
 |---|---|---|---|
@@ -17,6 +16,23 @@ Namespaces und landet immer auf der Default-Route (`extern`).
 
 > Das Source-Namespace-Matching wird vom **Envoy-Sidecar des aufrufenden Pods** ausgewertet — die
 > Testclient-Namespaces brauchen deshalb selbst Istio Sidecar-Injection, sonst greift die Regel nicht.
+
+Das gilt unabhängig vom Client: die busybox-Pods unten dienen nur zum schnellen Testen mit `wget`.
+Der [JavaHttpClient](../JavaHttpClient/javahttpclient-chart) — ein generischer HTTP-Client, der
+beliebige Ziel-URLs per `POST /client` weiterleitet — läuft aber in seinem eigenen Namespace
+`javahttpclient`, nicht in `testclientextern` oder `testclientintern`. Ruft er von dort
+`http://helloworld.helloworld.svc.cluster.local:8080/version` auf, kommt **gemischt** `extern` und
+`intern` zurück — nicht deterministisch wie beim busybox-Test.
+
+Der Grund liegt in `exportTo`: Sowohl DestinationRule als auch VirtualService von `helloworld`
+exportieren ihre Konfiguration nur nach `.`, `istio-ingress`, `istio-system`, `testclientextern`,
+`testclientintern`. Der Namespace `javahttpclient` steht **nicht** in dieser Liste — istiod schickt
+dessen Envoy-Sidecar die Routing-Regeln für den Host `helloworld` also gar nicht erst zu. Ohne
+sichtbares VirtualService/DestinationRule kennt der Sidecar auch keine Subsets; er behandelt den
+Aufruf wie plain Kubernetes-Service-Traffic und lastverteilt stur über **alle** Endpoints hinter dem
+Service `helloworld` — dessen Selector (`app: helloworld`) matcht ja sowohl `extern`- als auch
+`intern`-Pods gleichermaßen (siehe [service.yaml](helmchart/templates/service.yaml)). Daher der
+Zufallsmix.
 
 ## Testclient-Namespaces anlegen
 
