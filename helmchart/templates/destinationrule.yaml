@@ -5,6 +5,12 @@ metadata:
 spec:
   # Interner Kubernetes-Servicename – Istio wendet diese Regel auf Traffic an diesen Service an.
   host: {{ .Values.deploymentName }}
+  # Sichtbarkeit: gleiche Namespaces wie im VirtualService, damit das Gateway (Namespace istio-ingress)
+  # diese DestinationRule auch für Subset-Routing auflösen kann, statt mesh-weit ("*") sichtbar zu sein.
+  exportTo:
+  - "."
+  - istio-ingress
+  - istio-system
   trafficPolicy:
     # Circuit Breaker: fehlerhafte Pods werden temporär aus dem Load-Balancing-Pool entfernt.
     outlierDetection:
