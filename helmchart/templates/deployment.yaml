@@ -1,44 +1,52 @@
+{{- range $i, $v := .Values.versions }}
+{{- if $i }}
+---
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.deploymentName }}
+  name: {{ $.Values.deploymentName }}-{{ $v.name }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ $.Values.replicaCount }}
   # Unveränderlicher Selektor – Kubernetes nutzt ihn um Pods diesem Deployment zuzuordnen.
+  # version zusätzlich zu app, damit sich die Selektoren der einzelnen Versionen nicht überschneiden.
   # Nachträgliche Änderungen erfordern delete+recreate des Deployments.
   selector:
     matchLabels:
-      app: {{ .Values.deploymentName }}
+      app: {{ $.Values.deploymentName }}
+      version: {{ $v.name }}
   template:
     metadata:
       labels:
-        app: {{ .Values.deploymentName }}
+        app: {{ $.Values.deploymentName }}
+        # version-Label: Grundlage für die DestinationRule-Subsets (siehe destinationrule.yaml).
+        version: {{ $v.name }}
         # app.kubernetes.io/* Labels: Standard für ServiceMonitor/PodMonitor-Selektoren
         # des Prometheus Operators und für Grafana-Dashboard-Variablen.
-        app.kubernetes.io/name: {{ .Values.deploymentName }}
+        app.kubernetes.io/name: {{ $.Values.deploymentName }}
         # instance = Helm Release Name; ermöglicht mehrere Instanzen derselben App im Cluster.
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/instance: {{ $.Release.Name }}
         # version = Image Tag; wird in Grafana als Metadatum angezeigt.
-        app.kubernetes.io/version: {{ .Values.image.tag }}
+        app.kubernetes.io/version: {{ $.Values.image.tag }}
     spec:
       containers:
-        - name: {{ .Values.deploymentName }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+        - name: {{ $.Values.deploymentName }}
+          image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
           # Nur gerendert wenn extraEnv belegt ist – vermeidet leeren env-Block.
-          {{- with .Values.extraEnv }}
+          {{- with $.Values.extraEnv }}
           env:
           {{- toYaml . | nindent 12 }}
           {{- end }}
           # envFrom: injiziert alle Key-Value-Paare eines Secrets als Umgebungsvariablen.
           # Spring Boot übersetzt SPRING_DATASOURCE_* automatisch in spring.datasource.* Properties.
-          {{- if .Values.mysql.external.enabled }}
+          {{- if $.Values.mysql.external.enabled }}
           envFrom:
             - secretRef:
-                name: {{ .Values.deploymentName }}-mysql-secret
+                name: {{ $.Values.deploymentName }}-mysql-secret
           {{- end }}
           ports:
-            - containerPort: {{ .Values.service.port }}
+            - containerPort: {{ $.Values.service.port }}
           # requests: garantierte Ressourcen (Scheduling-Basis).
           # limits: harte Obergrenze – CPU wird gedrosselt, Memory-Überschreitung killt den Pod.
           resources:
@@ -49,8 +57,8 @@ spec:
               cpu: "500m"
               memory: "512Mi"
           volumeMounts:
-            # Bindet application.properties aus der ConfigMap als einzelne Datei ein (subPath),
-            # ohne das gesamte /app/config-Verzeichnis zu überschreiben.
+            # Bindet application.properties aus der versionsspezifischen ConfigMap als einzelne Datei
+            # ein (subPath), ohne das gesamte /app/config-Verzeichnis zu überschreiben.
             - name: config-volume
               mountPath: /app/config/application.properties
               subPath: application.properties
@@ -58,7 +66,7 @@ spec:
             # Ohne dieses Mount schlägt der Start in Read-Only-Filesystemen fehl.
             - name: tmp-volume
               mountPath: /tmp
-          {{- with .Values.extraVolumeMounts }}
+          {{- with $.Values.extraVolumeMounts }}
           {{- toYaml . | nindent 12 }}
           {{- end }}
           # startupProbe: gibt dem Container Zeit zum Hochfahren (failureThreshold * periodSeconds = 60s).
@@ -66,7 +74,7 @@ spec:
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: {{ .Values.service.port }}
+              port: {{ $.Values.service.port }}
             initialDelaySeconds: 10
             failureThreshold: 30
             periodSeconds: 10
@@ -75,22 +83,23 @@ spec:
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: {{ .Values.service.port }}
+              port: {{ $.Values.service.port }}
             periodSeconds: 20
           # readinessProbe: schlägt sie fehl, wird der Pod aus dem Service-Load-Balancing entfernt,
           # aber nicht neu gestartet (z.B. bei temporärer DB-Nichterreichbarkeit).
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
-              port: {{ .Values.service.port }}
+              port: {{ $.Values.service.port }}
             periodSeconds: 20
       volumes:
         - name: config-volume
           configMap:
-            name: {{ .Values.deploymentName }}-config
+            name: {{ $.Values.deploymentName }}-config-{{ $v.name }}
         # emptyDir: leeres, flüchtiges Volume – wird beim Pod-Start erstellt und beim Stop gelöscht.
         - name: tmp-volume
           emptyDir: {}
-      {{- with .Values.extraVolumes }}
+      {{- with $.Values.extraVolumes }}
       {{- toYaml . | nindent 8 }}
       {{- end }}
+{{- end }}

@@ -28,6 +28,19 @@ istio:
   # Name des Istio Gateways, der TLS terminiert und Traffic an diesen VirtualService weiterleitet.
   gateway: helloworld-gateway
 
+# Mehrere Versionen derselben App parallel deployen, um Source-Namespace-Routing zu demonstrieren
+# (siehe request-routing/istio-routing.md). Jede Version bekommt ein eigenes Deployment + eigene
+# ConfigMap (aus config/application-<name>.properties, siehe configmap.yaml) und dasselbe Image
+# (image.tag bleibt für beide "latest") -- Service, DestinationRule und VirtualService bleiben für
+# alle Versionen gemeinsam.
+versions:
+  - name: extern
+    # Namespace des internen Testclients – dessen Sidecar-zu-Sidecar-Traffic (Gateway "mesh")
+    # wird über die VirtualService-Subset-Route auf genau diese Version geroutet.
+    sourceNamespace: testclientextern
+  - name: intern
+    sourceNamespace: testclientintern
+
 certmanager:
   # Schaltet automatische TLS-Zertifikat-Ausstellung via cert-manager ein/aus.
   enabled: true

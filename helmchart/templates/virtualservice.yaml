@@ -9,19 +9,38 @@ spec:
     - {{ . }}
   {{- end }}
   # Sichtbarkeit: "." = eigener Namespace; weitere Namespaces damit der Gateway-Namespace routen kann.
+  # Zusätzlich die Testclient-Namespaces, deren Sidecars diese Regel für ihr Source-Namespace-Routing
+  # anwenden müssen – sonst sehen sie nur das plain Kubernetes Service-Routing ohne Subset-Auswahl.
   exportTo:
   - "."
   - istio-ingress
   - istio-system
+  {{- range .Values.versions }}
+  - {{ .sourceNamespace }}
+  {{- end }}
   gateways:
     # Eingehender Traffic vom Istio Ingress Gateway (extern).
     - {{ .Values.istio.gateway }}
     # "mesh" = interner Service-zu-Service Traffic innerhalb des Clusters.
     - mesh
   http:
-    - route:
+    # Source-Namespace-Matching: greift nur für Traffic über Gateway "mesh" (Sidecar-zu-Sidecar).
+    # Externer Traffic über {{ .Values.istio.gateway }} hat kein Source-Workload in einem App-Namespace
+    # und matcht hier nie – der fällt immer auf die Default-Route am Ende dieser Liste.
+    {{- range .Values.versions }}
+    - match:
+        - sourceNamespace: {{ .sourceNamespace }}
+      route:
+        - destination:
+            host: {{ $.Values.deploymentName }}
+            subset: {{ .name }}
+            port:
+              number: {{ $.Values.service.port }}
+    {{- end }}
+    - route:                     # Default-Route für alle übrigen Aufrufer (z.B. externer Ingress-Traffic)
         - destination:
             # Ziel-Service – Istio leitet an den Kubernetes Service mit diesem Namen weiter.
             host: {{ .Values.deploymentName }}
+            subset: {{ (first .Values.versions).name }}
             port:
               number: {{ .Values.service.port }}

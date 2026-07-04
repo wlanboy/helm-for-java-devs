@@ -7,10 +7,15 @@ spec:
   host: {{ .Values.deploymentName }}
   # Sichtbarkeit: gleiche Namespaces wie im VirtualService, damit das Gateway (Namespace istio-ingress)
   # diese DestinationRule auch für Subset-Routing auflösen kann, statt mesh-weit ("*") sichtbar zu sein.
+  # Zusätzlich die Testclient-Namespaces, deren Sidecars die Subsets für ihr Source-Namespace-Routing
+  # auflösen müssen (siehe virtualservice.yaml).
   exportTo:
   - "."
   - istio-ingress
   - istio-system
+  {{- range .Values.versions }}
+  - {{ .sourceNamespace }}
+  {{- end }}
   trafficPolicy:
     # Circuit Breaker: fehlerhafte Pods werden temporär aus dem Load-Balancing-Pool entfernt.
     outlierDetection:
@@ -20,3 +25,10 @@ spec:
       interval: 10s
       # Wie lange ein fehlerhafter Pod aus dem Pool ausgeschlossen bleibt.
       baseEjectionTime: 30s
+  # Subsets: ein Subset je Version aus values.yaml, selektiert über das version-Label im Deployment.
+  subsets:
+    {{- range .Values.versions }}
+    - name: {{ .name }}
+      labels:
+        version: {{ .name }}
+    {{- end }}

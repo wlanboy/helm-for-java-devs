@@ -1,8 +1,16 @@
+{{- range $i, $v := .Values.versions }}
+{{- if $i }}
+---
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Values.deploymentName }}-config
+  # Eine ConfigMap je Version, gespeist aus einer eigenen Properties-Datei
+  # (config/application-<version>.properties) – jede Version bekommt so ihre eigene,
+  # unabhängig änderbare Konfiguration (siehe versions in values.yaml).
+  name: {{ $.Values.deploymentName }}-config-{{ $v.name }}
 data:
   application.properties: |
     # tpl wertet Helm-Variablen (z.B. .Values.*) innerhalb der Properties-Datei aus.
-{{ tpl (.Files.Get "config/application.properties") . | indent 4 }}
+{{ tpl ($.Files.Get (printf "config/application-%s.properties" $v.name)) $ | indent 4 }}
+{{- end }}
