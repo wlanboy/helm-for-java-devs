@@ -5,9 +5,6 @@ replicaCount: 2
 # Wird auch als spring.application.name in application.properties gesetzt.
 deploymentName: helloworld
 
-# Kubernetes-Namespace, in dem alle Ressourcen dieses Charts angelegt werden.
-namespace: helloworld
-
 image:
   repository: registry.registry.svc.cluster.local:5000/helloworld
   tag: latest

@@ -3,7 +3,7 @@ apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
   name: {{ .Values.deploymentName }}-mysql-external-dr
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Release.Namespace }}
 spec:
   # Muss exakt dem Host aus dem ServiceEntry entsprechen.
   host: {{ .Values.mysql.external.host }}
