@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: helloteam
+  namespace: argocd
+spec:
+  description: Project for the helloteam
+
+  # Whitelist: nur diese Git-Repos dürfen als Source für Applications in diesem Projekt verwendet werden.
+  sourceRepos:
+    - https://github.com/wlanboy/helm-for-java-devs.git
+
+  # Whitelist: nur diese Cluster+Namespace-Kombinationen dürfen als Deployment-Ziel verwendet werden.
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: helloworld
+    # istio-ingress: nötig damit cert-manager das TLS-Secret im Gateway-Namespace anlegen darf.
+    - server: https://kubernetes.default.svc
+      namespace: istio-ingress
+
+  # syncWindows: Zeitfenster in denen Sync erlaubt oder gesperrt ist.
+  # Leer = kein Sync-Fenster, Sync jederzeit erlaubt.
+  syncWindows: []
+
+  # Warnt in der ArgoCD UI wenn Ressourcen im Ziel-Namespace existieren,
+  # die nicht durch dieses Projekt verwaltet werden (z.B. manuelles kubectl apply).
+  orphanedResources:
+    warn: false

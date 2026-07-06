@@ -102,6 +102,9 @@ Erwartet: `{"name":"helloworld","tags":["latest"]}`
 ## Namespace und ArgoCD vorbereiten
 
 ```bash
+# ArgoCD-Projekt anlegen (muss vor der Application existieren)
+kubectl apply -f argocd/helloteam-project.yaml
+
 # ArgoCD-Application anlegen
 kubectl apply -f argocd/hello-namespace.yml
 kubectl apply -f argocd/app-helloworld.yml
