@@ -58,6 +58,17 @@ kubectl apply -f tekton/task-kaniko.yml
 kubectl apply -f tekton/pipeline.yml
 ```
 
+### Alternative: Buildah statt Kaniko
+
+`task-buildah.yml` ist ein Drop-in-Ersatz für `task-kaniko.yml` (gleiche Params/Result), verpackt in einer eigenen Pipeline `helloworld-pipeline-buildah`:
+
+```bash
+kubectl apply -f tekton/task-buildah.yml
+kubectl apply -f tekton/pipeline-buildah.yml
+```
+
+> Details und Vergleich Kaniko vs. Buildah: **[tekton/tekton.md](tekton/tekton.md)**
+
 ---
 
 ## Pipeline starten
@@ -67,6 +78,12 @@ kubectl create -f tekton/pipeline-run.yml
 ```
 
 > `kubectl create` statt `apply`, damit `generateName` eine eindeutige Run-ID vergibt.
+
+Für die Buildah-Variante stattdessen:
+
+```bash
+kubectl create -f tekton/pipeline-run-buildah.yml
+```
 
 Logs verfolgen (Name des Runs ermitteln und dann):
 
