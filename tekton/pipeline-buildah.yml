@@ -1,0 +1,92 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: helloworld-pipeline-buildah
+  labels:
+    app.kubernetes.io/name: helloworld
+    app.kubernetes.io/version: "0.1"
+  annotations:
+    tekton.dev/displayName: "Helloworld: Git Clone → Maven Build → Buildah Push"
+spec:
+  description: >-
+    Same three stages as helloworld-pipeline, but builds/pushes the image
+    with Buildah instead of Kaniko:
+      1. clone       – checks out the source repository
+      2. build-jar   – compiles the JAR with Spring Boot AOT processing
+      3. docker-push – builds the Docker image with Buildah and pushes to the local k3s registry
+
+  params:
+    - name: repo-url
+      type: string
+      default: https://github.com/wlanboy/helm-for-java-devs.git
+    - name: revision
+      type: string
+      default: main
+    - name: image
+      type: string
+      default: registry.registry.svc.cluster.local:5000/helloworld:latest
+    - name: dockerfile
+      type: string
+      default: java/Dockerfile
+
+  workspaces:
+    - name: shared-data
+      description: PVC shared between clone, maven-build and buildah.
+
+  results:
+    - name: IMAGE_DIGEST
+      description: SHA256 digest of the pushed image.
+      value: $(tasks.docker-push.results.IMAGE_DIGEST)
+
+  tasks:
+    # 1. Clone
+    - name: clone
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: shared-data
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.revision)
+        - name: deleteExisting
+          value: "true"
+
+    # 2. Build JAR (AOT)
+    - name: build-jar
+      taskRef:
+        name: maven-build
+      runAfter:
+        - clone
+      workspaces:
+        - name: source
+          workspace: shared-data
+      params:
+        - name: SUBDIRECTORY
+          value: java
+        - name: GOALS
+          value:
+            - "-q"
+            - "-DskipTests"
+            - "compile"
+            - "spring-boot:process-aot"
+            - "package"
+
+    # 3. Build & push to local k3s registry
+    - name: docker-push
+      taskRef:
+        name: buildah-build-push
+      runAfter:
+        - build-jar
+      workspaces:
+        - name: source
+          workspace: shared-data
+      params:
+        - name: IMAGE
+          value: $(params.image)
+        - name: DOCKERFILE
+          value: $(params.dockerfile)
+        - name: CONTEXT
+          value: java

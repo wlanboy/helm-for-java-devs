@@ -1,0 +1,70 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: buildah-build-push
+spec:
+  description: >-
+    Builds the image from a Dockerfile with Buildah and pushes it to a
+    registry. Drop-in alternative to the kaniko-build-push Task: same
+    IMAGE/DOCKERFILE/CONTEXT params and the same IMAGE_DIGEST result.
+
+  params:
+    - name: IMAGE
+      type: string
+      description: Full image reference to push (registry/name:tag).
+    - name: DOCKERFILE
+      type: string
+      description: Path to Dockerfile, relative to the workspace root.
+      default: Dockerfile
+    - name: CONTEXT
+      type: string
+      description: Build context directory, relative to the workspace root.
+      default: "."
+    - name: TLS_VERIFY
+      type: string
+      description: Verify TLS when pulling/pushing. Set to "false" for the local insecure k3s registry.
+      default: "false"
+    - name: STORAGE_DRIVER
+      type: string
+      description: Buildah storage driver. "vfs" needs no /dev/fuse and works with the privileged securityContext below.
+      default: vfs
+    - name: BUILDAH_IMAGE
+      type: string
+      description: Buildah image to run the build in.
+      default: quay.io/buildah/stable:latest
+
+  workspaces:
+    - name: source
+
+  results:
+    - name: IMAGE_DIGEST
+      description: SHA256 digest of the pushed image.
+
+  steps:
+    - name: build-and-push
+      image: $(params.BUILDAH_IMAGE)
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        privileged: true
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        buildah --storage-driver="$(params.STORAGE_DRIVER)" bud \
+          --tls-verify="$(params.TLS_VERIFY)" \
+          -f "$(params.DOCKERFILE)" \
+          -t "$(params.IMAGE)" \
+          "$(params.CONTEXT)"
+
+        buildah --storage-driver="$(params.STORAGE_DRIVER)" push \
+          --tls-verify="$(params.TLS_VERIFY)" \
+          --digestfile="$(results.IMAGE_DIGEST.path)" \
+          "$(params.IMAGE)" \
+          "docker://$(params.IMAGE)"
+      volumeMounts:
+        - name: varlibcontainers
+          mountPath: /var/lib/containers
+
+  volumes:
+    - name: varlibcontainers
+      emptyDir: {}
