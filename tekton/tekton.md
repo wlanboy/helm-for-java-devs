@@ -1,4 +1,6 @@
-# Tekton
+# Tekton Pipeline
+
+Dieses Dokument beschreibt die Tekton-Pipeline in diesem Repo: was Tekton ist, wie die Pipeline aufgebaut ist und wie sich Kaniko gegen Buildah als Build-Backend tauschen lässt.
 
 ## Was ist Tekton?
 
@@ -17,6 +19,8 @@ Tekton ist ein Kubernetes-natives CI/CD-Framework. Statt eines eigenen CI-Server
 Man schreibt Tasks und Pipelines einmal, checkt sie als YAML ein (wie hier) und startet sie über `PipelineRun`-Objekte – reproduzierbar, versioniert, ohne externen CI-Server.
 
 ## Die Pipeline in diesem Repo
+
+Übersicht über die YAML-Dateien in `tekton/` und wie sie zusammenspielen.
 
 ```
 tekton/
