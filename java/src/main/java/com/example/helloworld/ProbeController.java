@@ -1,6 +1,7 @@
 package com.example.helloworld;
 
 import org.springframework.boot.availability.AvailabilityChangeEvent;
+import org.springframework.boot.availability.AvailabilityState;
 import org.springframework.boot.availability.LivenessState;
 import org.springframework.boot.availability.ReadinessState;
 import org.springframework.context.ApplicationEventPublisher;
@@ -20,33 +21,25 @@ public class ProbeController {
         this.publisher = publisher;
     }
 
+    public enum ToggleState {
+        OK, NOTOK
+    }
+
     @GetMapping("/health/{status}")
-    public ResponseEntity<String> setHealth(@PathVariable String status) {
-        return switch (status.toLowerCase()) {
-            case "ok" -> {
-                AvailabilityChangeEvent.publish(publisher, this, LivenessState.CORRECT);
-                yield ResponseEntity.ok("health: ok");
-            }
-            case "notok" -> {
-                AvailabilityChangeEvent.publish(publisher, this, LivenessState.BROKEN);
-                yield ResponseEntity.ok("health: not ok");
-            }
-            default -> ResponseEntity.badRequest().body("use 'ok' or 'notok'");
-        };
+    public ResponseEntity<String> setHealth(@PathVariable ToggleState status) {
+        AvailabilityState state = status == ToggleState.OK ? LivenessState.CORRECT : LivenessState.BROKEN;
+        AvailabilityChangeEvent.publish(publisher, this, state);
+        return ResponseEntity.ok("health: " + describe(status));
     }
 
     @GetMapping("/ready/{status}")
-    public ResponseEntity<String> setReady(@PathVariable String status) {
-        return switch (status.toLowerCase()) {
-            case "ok" -> {
-                AvailabilityChangeEvent.publish(publisher, this, ReadinessState.ACCEPTING_TRAFFIC);
-                yield ResponseEntity.ok("ready: ok");
-            }
-            case "notok" -> {
-                AvailabilityChangeEvent.publish(publisher, this, ReadinessState.REFUSING_TRAFFIC);
-                yield ResponseEntity.ok("ready: not ok");
-            }
-            default -> ResponseEntity.badRequest().body("use 'ok' or 'notok'");
-        };
+    public ResponseEntity<String> setReady(@PathVariable ToggleState status) {
+        AvailabilityState state = status == ToggleState.OK ? ReadinessState.ACCEPTING_TRAFFIC : ReadinessState.REFUSING_TRAFFIC;
+        AvailabilityChangeEvent.publish(publisher, this, state);
+        return ResponseEntity.ok("ready: " + describe(status));
+    }
+
+    private static String describe(ToggleState status) {
+        return status == ToggleState.OK ? "ok" : "not ok";
     }
 }

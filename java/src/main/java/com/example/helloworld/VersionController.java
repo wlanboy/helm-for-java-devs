@@ -13,17 +13,18 @@ import java.util.Map;
 public class VersionController {
 
     private final String versionLabel;
-    private final String podName = System.getenv().getOrDefault("HOSTNAME", "unknown");
+    private final PodInfo podInfo;
 
-    public VersionController(@Value("${app.version-label:unknown}") String versionLabel) {
+    public VersionController(@Value("${app.version-label:unknown}") String versionLabel, PodInfo podInfo) {
         this.versionLabel = versionLabel;
+        this.podInfo = podInfo;
     }
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, String> version() {
         return Map.of(
                 "versionLabel", versionLabel,
-                "pod", podName
+                "pod", podInfo.podName()
         );
     }
 }
