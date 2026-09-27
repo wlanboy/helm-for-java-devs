@@ -1,14 +1,17 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.deploymentName }}
+  name: {{ include "helloworld.name" . }}
+  labels:
+    {{- include "helloworld.labels" . | nindent 4 }}
 spec:
   # Selektiert Pods anhand des app-Labels – muss mit dem Label im Deployment übereinstimmen.
+  # Bewusst ohne version: der Service umfasst alle Versionen, die Auswahl trifft Istio über Subsets.
   selector:
-    app: {{ .Values.deploymentName }}
+    app: {{ include "helloworld.name" . }}
   ports:
     - name: http
       # Externer Port des Services (für VirtualService und ServiceMonitor).
       port: {{ .Values.service.port }}
-      # Interner Port des Containers – muss mit server.port in application.properties übereinstimmen.
-      targetPort: {{ .Values.service.port }}
+      # Benannter Container-Port aus dem Deployment (= server.port in application.properties).
+      targetPort: http

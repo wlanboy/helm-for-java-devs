@@ -1,26 +1,28 @@
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
-  name: {{ .Values.deploymentName }}-dr
+  name: {{ include "helloworld.name" . }}-dr
+  labels:
+    {{- include "helloworld.labels" . | nindent 4 }}
 spec:
   # Interner Kubernetes-Servicename – Istio wendet diese Regel auf Traffic an diesen Service an.
-  host: {{ .Values.deploymentName }}
-  # Sichtbarkeit: gleiche Namespaces wie im VirtualService, damit das Gateway (Namespace istio-ingress)
-  # diese DestinationRule auch für Subset-Routing auflösen kann, statt mesh-weit ("*") sichtbar zu sein.
+  host: {{ include "helloworld.name" . }}
+  # Sichtbarkeit: gleiche Namespaces wie die VirtualServices, damit das Gateway (Ingress-Namespace)
+  # diese DestinationRule für Subset-Routing auflösen kann, statt mesh-weit ("*") sichtbar zu sein.
   # Zusätzlich die Testclient-Namespaces, deren Sidecars die Subsets für ihr Source-Namespace-Routing
   # auflösen müssen (siehe virtualservice.yaml).
   exportTo:
-  - "."
-  - istio-ingress
-  - istio-system
-  {{- range .Values.versions }}
-  - {{ .sourceNamespace }}
-  {{- end }}
+    {{- include "helloworld.istioExportTo" . | nindent 4 }}
+    {{- range .Values.versions }}
+    - {{ .sourceNamespace }}
+    {{- end }}
   trafficPolicy:
     # Circuit Breaker: fehlerhafte Pods werden temporär aus dem Load-Balancing-Pool entfernt.
     outlierDetection:
-      # Nach 1 aufeinanderfolgenden 5xx-Fehlern wird der Pod als fehlerhaft markiert.
-      consecutive5xxErrors: 1
+      # Nach 5 aufeinanderfolgenden 5xx-Fehlern wird der Pod als fehlerhaft markiert.
+      # Ein zu niedriger Wert wirft Pods schon bei einzelnen Fehlern raus – bei 2 Pods je Subset
+      # wäre dann die halbe Kapazität weg.
+      consecutive5xxErrors: 5
       # Prüfintervall – wie oft Istio die Fehlerrate je Pod auswertet.
       interval: 10s
       # Wie lange ein fehlerhafter Pod aus dem Pool ausgeschlossen bleibt.

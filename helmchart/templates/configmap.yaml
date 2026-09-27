@@ -1,3 +1,8 @@
+{{- /*
+Eine ConfigMap je Version: gemeinsame Basis config/application.properties plus
+versionsspezifische Overrides aus config/application-<version>.properties (siehe _helpers.tpl).
+tpl wertet Helm-Variablen (z.B. .Values.*) innerhalb der Properties-Dateien aus.
+*/}}
 {{- range $i, $v := .Values.versions }}
 {{- if $i }}
 ---
@@ -5,12 +10,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  # Eine ConfigMap je Version, gespeist aus einer eigenen Properties-Datei
-  # (config/application-<version>.properties) – jede Version bekommt so ihre eigene,
-  # unabhängig änderbare Konfiguration (siehe versions in values.yaml).
-  name: {{ $.Values.deploymentName }}-config-{{ $v.name }}
+  name: {{ include "helloworld.name" $ }}-config-{{ $v.name }}
+  labels:
+    {{- include "helloworld.labels" $ | nindent 4 }}
+    version: {{ $v.name }}
 data:
   application.properties: |
-    # tpl wertet Helm-Variablen (z.B. .Values.*) innerhalb der Properties-Datei aus.
-{{ tpl ($.Files.Get (printf "config/application-%s.properties" $v.name)) $ | indent 4 }}
+    {{- include "helloworld.properties" (dict "root" $ "version" $v) | nindent 4 }}
 {{- end }}

@@ -1,46 +1,77 @@
-apiVersion: networking.istio.io/v1beta1
+{{- /*
+Zwei VirtualServices, weil Ingress- und Mesh-Traffic unterschiedliche Hosts verwenden:
+- Gateway: externe Hostnamen (values.hosts), Traffic vom Istio Ingress Gateway.
+- Mesh:    interner Service-FQDN, Sidecar-zu-Sidecar-Traffic mit Source-Namespace-Routing.
+Der Sidecar wendet eine VirtualService-Regel nur an, wenn der aufgerufene Host in hosts steht –
+Aufrufe an <service>.<namespace>.svc.cluster.local würden von einem VS mit nur externen
+Hostnamen nie erfasst.
+*/}}
+apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
-  name: {{ .Values.deploymentName }}-sv
+  name: {{ include "helloworld.name" . }}-gateway-vs
+  labels:
+    {{- include "helloworld.labels" . | nindent 4 }}
 spec:
   # Hostnamen für die dieser VirtualService Traffic annimmt – muss mit Gateway-Hosts übereinstimmen.
   hosts:
   {{- range .Values.hosts }}
     - {{ . }}
   {{- end }}
-  # Sichtbarkeit: "." = eigener Namespace; weitere Namespaces damit der Gateway-Namespace routen kann.
-  # Zusätzlich die Testclient-Namespaces, deren Sidecars diese Regel für ihr Source-Namespace-Routing
-  # anwenden müssen – sonst sehen sie nur das plain Kubernetes Service-Routing ohne Subset-Auswahl.
+  # Sichtbarkeit: eigener Namespace + Ingress-Namespace, damit das Gateway routen kann.
+  exportTo:
+    {{- include "helloworld.istioExportTo" . | nindent 4 }}
+  gateways:
+    # Nur eingehender Traffic vom Istio Ingress Gateway (extern).
+    - {{ .Values.istio.gateway }}
+  http:
+    # Externer Traffic hat kein Source-Workload in einem App-Namespace –
+    # er landet immer auf der ersten konfigurierten Version.
+    - route:
+        - destination:
+            # Ziel-Service – Istio leitet an den Kubernetes Service mit diesem Namen weiter.
+            host: {{ include "helloworld.name" . }}
+            subset: {{ (first .Values.versions).name }}
+            port:
+              number: {{ .Values.service.port }}
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: {{ include "helloworld.name" . }}-mesh-vs
+  labels:
+    {{- include "helloworld.labels" . | nindent 4 }}
+spec:
+  # Interner Service-FQDN – so rufen Clients im Cluster den Service auf.
+  hosts:
+    - {{ include "helloworld.name" . }}.{{ .Release.Namespace }}.svc.cluster.local
+  # Sichtbarkeit: eigener Namespace + Testclient-Namespaces, deren Sidecars diese Regel für ihr
+  # Source-Namespace-Routing anwenden müssen – sonst sehen sie nur das plain Kubernetes
+  # Service-Routing ohne Subset-Auswahl.
   exportTo:
   - "."
-  - istio-ingress
-  - istio-system
   {{- range .Values.versions }}
   - {{ .sourceNamespace }}
   {{- end }}
   gateways:
-    # Eingehender Traffic vom Istio Ingress Gateway (extern).
-    - {{ .Values.istio.gateway }}
     # "mesh" = interner Service-zu-Service Traffic innerhalb des Clusters.
     - mesh
   http:
-    # Source-Namespace-Matching: greift nur für Traffic über Gateway "mesh" (Sidecar-zu-Sidecar).
-    # Externer Traffic über {{ .Values.istio.gateway }} hat kein Source-Workload in einem App-Namespace
-    # und matcht hier nie – der fällt immer auf die Default-Route am Ende dieser Liste.
+    # Source-Namespace-Matching: Aufrufer aus sourceNamespace landen auf der zugehörigen Version.
     {{- range .Values.versions }}
     - match:
         - sourceNamespace: {{ .sourceNamespace }}
       route:
         - destination:
-            host: {{ $.Values.deploymentName }}
+            host: {{ include "helloworld.name" $ }}
             subset: {{ .name }}
             port:
               number: {{ $.Values.service.port }}
     {{- end }}
-    - route:                     # Default-Route für alle übrigen Aufrufer (z.B. externer Ingress-Traffic)
+    # Default-Route für alle übrigen Aufrufer im Mesh.
+    - route:
         - destination:
-            # Ziel-Service – Istio leitet an den Kubernetes Service mit diesem Namen weiter.
-            host: {{ .Values.deploymentName }}
+            host: {{ include "helloworld.name" . }}
             subset: {{ (first .Values.versions).name }}
             port:
               number: {{ .Values.service.port }}

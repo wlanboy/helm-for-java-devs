@@ -5,7 +5,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ $.Values.deploymentName }}-{{ $v.name }}
+  name: {{ include "helloworld.name" $ }}-{{ $v.name }}
+  labels:
+    {{- include "helloworld.labels" $ | nindent 4 }}
+    version: {{ $v.name }}
 spec:
   replicas: {{ $.Values.replicaCount }}
   # Unveränderlicher Selektor – Kubernetes nutzt ihn um Pods diesem Deployment zuzuordnen.
@@ -13,93 +16,131 @@ spec:
   # Nachträgliche Änderungen erfordern delete+recreate des Deployments.
   selector:
     matchLabels:
-      app: {{ $.Values.deploymentName }}
+      app: {{ include "helloworld.name" $ }}
       version: {{ $v.name }}
   template:
     metadata:
       labels:
-        app: {{ $.Values.deploymentName }}
+        # Enthält app + app.kubernetes.io/* (Selektoren für ServiceMonitor/PodMonitor, Grafana-Variablen).
+        {{- include "helloworld.labels" $ | nindent 8 }}
         # version-Label: Grundlage für die DestinationRule-Subsets (siehe destinationrule.yaml).
         version: {{ $v.name }}
-        # app.kubernetes.io/* Labels: Standard für ServiceMonitor/PodMonitor-Selektoren
-        # des Prometheus Operators und für Grafana-Dashboard-Variablen.
-        app.kubernetes.io/name: {{ $.Values.deploymentName }}
-        # instance = Helm Release Name; ermöglicht mehrere Instanzen derselben App im Cluster.
-        app.kubernetes.io/instance: {{ $.Release.Name }}
-        # version = Image Tag; wird in Grafana als Metadatum angezeigt.
-        app.kubernetes.io/version: {{ $.Values.image.tag }}
+      annotations:
+        # Hash der gerenderten application.properties: ändert sich die ConfigMap, ändert sich das
+        # Pod-Template und Kubernetes startet ein Rolling Update. Nötig, weil subPath-Mounts
+        # nie nachgeladen werden.
+        checksum/config: {{ include "helloworld.properties" (dict "root" $ "version" $v) | sha256sum }}
+        # Istio: App-Container erst starten, wenn der Sidecar bereit ist – sonst schlagen
+        # ausgehende Verbindungen beim Start fehl (z.B. HikariCP-Connect zur MySQL-DB).
+        # EXIT_ON_ZERO_ACTIVE_CONNECTIONS: Sidecar beendet sich beim Shutdown erst, wenn keine
+        # Verbindungen mehr offen sind – die App kann Requests und DB-Verbindungen sauber abschließen.
+        proxy.istio.io/config: |
+          holdApplicationUntilProxyStarts: true
+          proxyMetadata:
+            EXIT_ON_ZERO_ACTIVE_CONNECTIONS: "true"
     spec:
+      serviceAccountName: {{ include "helloworld.serviceAccountName" $ }}
+      # Die App braucht keinen Zugriff auf die Kubernetes-API.
+      automountServiceAccountToken: false
+      # Muss größer sein als preStop-Sleep + spring.lifecycle.timeout-per-shutdown-phase.
+      terminationGracePeriodSeconds: {{ $.Values.shutdown.terminationGracePeriodSeconds }}
+      {{- with $.Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $.Values.topologySpread.enabled }}
+      # Verteilt die Pods einer Version möglichst gleichmäßig über die Nodes,
+      # damit ein Node-Ausfall nicht alle Replicas gleichzeitig trifft.
+      topologySpreadConstraints:
+        - maxSkew: {{ $.Values.topologySpread.maxSkew }}
+          topologyKey: {{ $.Values.topologySpread.topologyKey }}
+          whenUnsatisfiable: {{ $.Values.topologySpread.whenUnsatisfiable }}
+          labelSelector:
+            matchLabels:
+              app: {{ include "helloworld.name" $ }}
+              version: {{ $v.name }}
+      {{- end }}
       containers:
-        - name: {{ $.Values.deploymentName }}
+        - name: {{ include "helloworld.name" $ }}
           image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"
           imagePullPolicy: {{ $.Values.image.pullPolicy }}
-          # Nur gerendert wenn extraEnv belegt ist – vermeidet leeren env-Block.
-          {{- with $.Values.extraEnv }}
+          {{- with $.Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
-          {{- toYaml . | nindent 12 }}
+            # JAVA_TOOL_OPTIONS wird von der JVM automatisch ausgewertet, z.B. MaxRAMPercentage,
+            # damit der Heap sich am Memory-Limit des Containers orientiert (Default nur 25%).
+            - name: JAVA_TOOL_OPTIONS
+              value: {{ $.Values.javaToolOptions | quote }}
+          {{- with $.Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
           {{- end }}
           # envFrom: injiziert alle Key-Value-Paare eines Secrets als Umgebungsvariablen.
           # Spring Boot übersetzt SPRING_DATASOURCE_* automatisch in spring.datasource.* Properties.
           {{- if $.Values.mysql.external.enabled }}
           envFrom:
             - secretRef:
-                name: {{ $.Values.deploymentName }}-mysql-secret
+                name: {{ include "helloworld.name" $ }}-mysql-secret
           {{- end }}
           ports:
-            - containerPort: {{ $.Values.service.port }}
+            - name: http
+              containerPort: {{ $.Values.service.port }}
           # requests: garantierte Ressourcen (Scheduling-Basis).
           # limits: harte Obergrenze – CPU wird gedrosselt, Memory-Überschreitung killt den Pod.
+          {{- with $.Values.resources }}
           resources:
-            requests:
-              cpu: "300m"
-              memory: "256Mi"
-            limits:
-              cpu: "500m"
-              memory: "512Mi"
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          lifecycle:
+            # preStop-Sleep: Kubernetes entfernt den Pod parallel zum SIGTERM aus den Endpoints.
+            # Bis Istio und kube-proxy das mitbekommen, kommen noch Requests an – der Sleep
+            # verzögert den SIGTERM, damit diese Requests nicht verloren gehen.
+            preStop:
+              sleep:
+                seconds: {{ $.Values.shutdown.preStopSleepSeconds }}
           volumeMounts:
             # Bindet application.properties aus der versionsspezifischen ConfigMap als einzelne Datei
             # ein (subPath), ohne das gesamte /app/config-Verzeichnis zu überschreiben.
             - name: config-volume
               mountPath: /app/config/application.properties
               subPath: application.properties
-            # /tmp als emptyDir: Spring Boot und die JVM brauchen beschreibbares /tmp.
-            # Ohne dieses Mount schlägt der Start in Read-Only-Filesystemen fehl.
+            # /tmp als emptyDir: Spring Boot (Tomcat) und die JVM brauchen beschreibbares /tmp,
+            # da das Root-Filesystem read-only ist (readOnlyRootFilesystem im securityContext).
             - name: tmp-volume
               mountPath: /tmp
           {{- with $.Values.extraVolumeMounts }}
-          {{- toYaml . | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
           {{- end }}
-          # startupProbe: gibt dem Container Zeit zum Hochfahren (failureThreshold * periodSeconds = 60s).
+          # startupProbe: gibt dem Container Zeit zum Hochfahren
+          # (initialDelaySeconds + failureThreshold * periodSeconds, mit Defaults 10 + 30 * 10 = 310s).
           # Erst danach greifen liveness- und readinessProbe.
           startupProbe:
             httpGet:
-              path: /actuator/health/liveness
-              port: {{ $.Values.service.port }}
-            initialDelaySeconds: 10
-            failureThreshold: 30
-            periodSeconds: 10
-            timeoutSeconds: 5
+              path: {{ $.Values.probes.startup.path }}
+              port: http
+            {{- toYaml (omit $.Values.probes.startup "path") | nindent 12 }}
           # livenessProbe: schlägt sie fehl, wird der Pod neu gestartet (Deadlock-Erkennung).
           livenessProbe:
             httpGet:
-              path: /actuator/health/liveness
-              port: {{ $.Values.service.port }}
-            periodSeconds: 20
+              path: {{ $.Values.probes.liveness.path }}
+              port: http
+            {{- toYaml (omit $.Values.probes.liveness "path") | nindent 12 }}
           # readinessProbe: schlägt sie fehl, wird der Pod aus dem Service-Load-Balancing entfernt,
           # aber nicht neu gestartet (z.B. bei temporärer DB-Nichterreichbarkeit).
           readinessProbe:
             httpGet:
-              path: /actuator/health/readiness
-              port: {{ $.Values.service.port }}
-            periodSeconds: 20
+              path: {{ $.Values.probes.readiness.path }}
+              port: http
+            {{- toYaml (omit $.Values.probes.readiness "path") | nindent 12 }}
       volumes:
         - name: config-volume
           configMap:
-            name: {{ $.Values.deploymentName }}-config-{{ $v.name }}
+            name: {{ include "helloworld.name" $ }}-config-{{ $v.name }}
         # emptyDir: leeres, flüchtiges Volume – wird beim Pod-Start erstellt und beim Stop gelöscht.
         - name: tmp-volume
           emptyDir: {}
       {{- with $.Values.extraVolumes }}
-      {{- toYaml . | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
       {{- end }}
 {{- end }}

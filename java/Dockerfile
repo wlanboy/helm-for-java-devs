@@ -9,4 +9,7 @@ FROM docker.io/library/eclipse-temurin:25-jre
 WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
 EXPOSE 8080
+# Non-Root-User (numerisch, damit runAsNonRoot im Pod-securityContext greift).
+# Muss zu podSecurityContext.runAsUser in helmchart/values.yaml passen.
+USER 10001:10001
 ENTRYPOINT ["java", "-Dspring.aot.enabled=true", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]

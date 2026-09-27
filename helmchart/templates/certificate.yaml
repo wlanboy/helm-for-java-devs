@@ -5,7 +5,9 @@ metadata:
   # Secret-Name als Ressourcenname – muss mit credentialName im Gateway übereinstimmen.
   name: {{ .Values.certmanager.secretName }}
   # Muss im Namespace des Istio Ingress Gateways liegen, damit Istio das TLS-Secret lesen kann.
-  namespace: {{ .Values.certmanager.namespace }}
+  namespace: {{ .Values.istio.ingressNamespace }}
+  labels:
+    {{- include "helloworld.labels" . | nindent 4 }}
 spec:
   secretName: {{ .Values.certmanager.secretName }}
   issuerRef:

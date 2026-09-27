@@ -271,6 +271,57 @@ kubectl delete namespace helloworld
 
 ---
 
+## Lokal testen mit Kind
+
+Chart ohne Tekton und ArgoCD direkt in einem lokalen Kind-Cluster deployen. Die App ist danach
+unter **http://helloworld.localhost** erreichbar.
+
+### Voraussetzungen
+
+Der Kind-Cluster braucht Istio (Ingress-Gateway im Namespace `istio-ingress`), Port 80/443 per
+`extraPortMappings` auf dem Host und eine lokale Registry (`kind-registry`, auf dem Host unter
+`localhost:5001`). containerd auf den Nodes löst `registry.registry.svc.cluster.local:5000` auf
+diese Registry auf. `*.localhost` zeigt ohne Eintrag in `/etc/hosts` auf `127.0.0.1`.
+
+cert-manager ist im Kind-Cluster nicht installiert, deshalb wird `certmanager.enabled=false`
+gesetzt. Die App läuft dann nur über HTTP.
+
+### Image bauen und in die lokale Registry pushen
+
+Das Image wird unter `localhost:5001` gepusht und im Cluster über den Registry-Mirror gezogen.
+
+```bash
+docker build -t localhost:5001/helloworld:latest java/
+docker push localhost:5001/helloworld:latest
+```
+
+### Deployen
+
+Namespace mit Istio-Sidecar-Injection anlegen und Chart installieren.
+
+```bash
+kubectl create namespace helloworld
+kubectl label namespace helloworld istio-injection=enabled
+
+helm upgrade --install helloworld helmchart/ --namespace helloworld \
+  --set certmanager.enabled=false --wait
+```
+
+### Prüfen
+
+Alle vier Pods (2× `extern`, 2× `intern`) müssen `2/2 Running` sein (App + Istio-Sidecar).
+
+```bash
+kubectl -n helloworld get pods
+
+curl http://helloworld.localhost/
+curl http://helloworld.localhost/application
+curl http://helloworld.localhost/db
+curl http://helloworld.localhost/actuator/health
+```
+
+---
+
 ## MySQL aktivieren (Feature Flag)
 
 Wechsel von der In-Memory-H2-Datenbank auf eine externe MySQL-Instanz über das Feature Flag

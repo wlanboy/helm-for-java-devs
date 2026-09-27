@@ -1,9 +1,11 @@
 {{- if .Values.mysql.external.enabled }}
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: ServiceEntry
 metadata:
-  name: {{ .Values.deploymentName }}-mysql-external
+  name: {{ include "helloworld.name" . }}-mysql-external
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "helloworld.labels" . | nindent 4 }}
 spec:
   # Hostname unter dem der externe MySQL-Server im Mesh angesprochen wird.
   # Spring-Datasource-URL: jdbc:mysql://mysql.extern.big.lan:3306/mydb

@@ -1,7 +1,9 @@
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: Gateway
 metadata:
   name: {{ .Values.istio.gateway }}
+  labels:
+    {{- include "helloworld.labels" . | nindent 4 }}
 spec:
   # Bindet diesen Gateway an den Istio Ingress Gateway Pod (Label istio=ingressgateway).
   selector:
@@ -20,10 +22,10 @@ spec:
       tls:
         # SIMPLE: TLS wird am Gateway terminiert; intern läuft Traffic unverschlüsselt (mTLS via Istio).
         mode: SIMPLE
-        # Referenz auf das Secret, das cert-manager im Istio-Namespace ablegt.
+        # Referenz auf das Secret, das cert-manager im Istio-Ingress-Namespace ablegt.
         credentialName: {{ .Values.certmanager.secretName }}
     {{- end }}
-    # HTTP-Listener immer aktiv – ermöglicht Redirects oder Zugriff ohne TLS.
+    # HTTP-Listener: mit TLS leitet er per 301 auf HTTPS um, ohne TLS liefert er direkt aus.
     - port:
         number: 80
         name: http
@@ -31,4 +33,8 @@ spec:
       hosts:
       {{- range .Values.hosts }}
         - {{ . }}
+      {{- end }}
+      {{- if and .Values.certmanager.enabled .Values.istio.httpsRedirect }}
+      tls:
+        httpsRedirect: true
       {{- end }}

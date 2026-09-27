@@ -1,0 +1,23 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+{{- range $i, $v := .Values.versions }}
+{{- if $i }}
+---
+{{- end }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  # Ein PDB je Version, da jede Version ein eigenes Deployment mit eigenem Selektor ist.
+  # Schützt bei freiwilligen Unterbrechungen (Node-Drain, Cluster-Upgrade) davor,
+  # dass alle Pods einer Version gleichzeitig verdrängt werden.
+  name: {{ include "helloworld.name" $ }}-{{ $v.name }}
+  labels:
+    {{- include "helloworld.labels" $ | nindent 4 }}
+    version: {{ $v.name }}
+spec:
+  maxUnavailable: {{ $.Values.podDisruptionBudget.maxUnavailable }}
+  selector:
+    matchLabels:
+      app: {{ include "helloworld.name" $ }}
+      version: {{ $v.name }}
+{{- end }}
+{{- end }}

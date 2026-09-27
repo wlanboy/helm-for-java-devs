@@ -1,9 +1,11 @@
 {{- if .Values.mysql.external.enabled }}
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
-  name: {{ .Values.deploymentName }}-mysql-external-dr
+  name: {{ include "helloworld.name" . }}-mysql-external-dr
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "helloworld.labels" . | nindent 4 }}
 spec:
   # Muss exakt dem Host aus dem ServiceEntry entsprechen.
   host: {{ .Values.mysql.external.host }}

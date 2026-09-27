@@ -12,11 +12,93 @@ image:
   # IfNotPresent: nur ziehen wenn lokal nicht vorhanden (besser für stabile Tags wie 1.2.3).
   pullPolicy: Always
 
+# JVM-Optionen, werden über die Umgebungsvariable JAVA_TOOL_OPTIONS an die JVM übergeben.
+# MaxRAMPercentage=75: Heap darf 75% des Container-Memory-Limits nutzen (JVM-Default: nur 25%).
+# Der Rest bleibt für Metaspace, Thread-Stacks, Direct Buffers und Code Cache.
+javaToolOptions: "-XX:MaxRAMPercentage=75.0"
+
+# requests: garantierte Ressourcen (Scheduling-Basis).
+# limits: harte Obergrenze – CPU wird gedrosselt, Memory-Überschreitung killt den Pod (OOMKilled).
+resources:
+  requests:
+    cpu: "300m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+# Health-Probes auf die Spring-Actuator-Endpoints. path wird ins httpGet übernommen,
+# alle übrigen Felder landen 1:1 in der Probe (Port ist immer der Container-Port "http").
+probes:
+  # startupProbe: max. initialDelaySeconds + failureThreshold * periodSeconds = 310s Startzeit.
+  startup:
+    path: /actuator/health/liveness
+    initialDelaySeconds: 10
+    failureThreshold: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+  liveness:
+    path: /actuator/health/liveness
+    periodSeconds: 20
+  readiness:
+    path: /actuator/health/readiness
+    periodSeconds: 10
+
+# Graceful Shutdown beim Rolling Update / Pod-Löschung:
+# 1. preStop-Sleep hält den SIGTERM zurück, bis Istio/kube-proxy den Pod aus den Endpoints genommen haben.
+# 2. Spring Boot beendet laufende Requests (server.shutdown=graceful) innerhalb timeoutPerShutdownPhase.
+# terminationGracePeriodSeconds muss größer sein als preStopSleepSeconds + timeoutPerShutdownPhase,
+# sonst wird der Pod vorher per SIGKILL beendet.
+shutdown:
+  preStopSleepSeconds: 10
+  timeoutPerShutdownPhase: 20s
+  terminationGracePeriodSeconds: 45
+
+# Eigener ServiceAccount ohne gemountetes API-Token (siehe serviceaccount.yaml).
+serviceAccount:
+  create: true
+  # Leer = deploymentName.
+  name: ""
+
+# Pod-weiter securityContext. runAsUser muss zum USER im Dockerfile passen.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container-securityContext: Root-Filesystem read-only (/tmp ist ein emptyDir),
+# keine Rechteausweitung, alle Linux-Capabilities entzogen.
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Ein PodDisruptionBudget je Version: bei Node-Drain oder Cluster-Upgrade darf höchstens
+# maxUnavailable Pod einer Version gleichzeitig verdrängt werden.
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
+# Verteilt die Pods einer Version über die Nodes.
+# ScheduleAnyway: weiche Regel – bei zu wenigen Nodes (z.B. Kind mit einem Node) wird trotzdem geplant.
+# DoNotSchedule: harte Regel – Pods bleiben Pending, wenn die Verteilung nicht eingehalten werden kann.
+topologySpread:
+  enabled: true
+  maxSkew: 1
+  topologyKey: kubernetes.io/hostname
+  whenUnsatisfiable: ScheduleAnyway
+
 # Istio VirtualService: auf welchen Hostnamen die App erreichbar sein soll.
 hosts:
   - helloworld.gmk.lan
   - helloworld.tp.lan
   - helloworld.big.lan
+  - helloworld.localhost
 
 service:
   # Port des Spring Boot Containers – muss mit server.port in application.properties übereinstimmen.
@@ -25,10 +107,18 @@ service:
 istio:
   # Name des Istio Gateways, der TLS terminiert und Traffic an diesen VirtualService weiterleitet.
   gateway: helloworld-gateway
+  # Namespace des Istio Ingress Gateways: dort legt cert-manager das TLS-Secret ab,
+  # und VirtualService/DestinationRule werden dorthin exportiert.
+  ingressNamespace: istio-ingress
+  # Weitere Namespaces, an die VirtualService und DestinationRule exportiert werden.
+  extraExportNamespaces:
+    - istio-system
+  # Leitet HTTP (Port 80) per 301 auf HTTPS um – nur wirksam wenn certmanager.enabled.
+  httpsRedirect: true
 
 # Mehrere Versionen derselben App parallel deployen, um Source-Namespace-Routing zu demonstrieren
-# (siehe request-routing/istio-routing.md). Jede Version bekommt ein eigenes Deployment + eigene
-# ConfigMap (aus config/application-<name>.properties, siehe configmap.yaml) und dasselbe Image
+# (siehe kunden-traffic.md). Jede Version bekommt ein eigenes Deployment + eigene ConfigMap
+# (config/application.properties + config/application-<name>.properties, siehe configmap.yaml) und dasselbe Image
 # (image.tag bleibt für beide "latest") -- Service, DestinationRule und VirtualService bleiben für
 # alle Versionen gemeinsam.
 versions:
@@ -46,9 +136,8 @@ certmanager:
   issuer: local-ca-issuer
   kind: ClusterIssuer
   # Kubernetes Secret, in dem das ausgestellte TLS-Zertifikat abgelegt wird.
+  # Liegt im Namespace istio.ingressNamespace – dort muss es für das Gateway liegen, nicht im App-Namespace.
   secretName: helloworld-tls
-  # Namespace des Istio Ingress Gateways – dort muss das TLS-Secret liegen, nicht im App-Namespace.
-  namespace: istio-ingress
 
 # Erweiterungspunkte: zusätzliche VolumeMounts, Volumes und Umgebungsvariablen
 # ohne das Chart selbst ändern zu müssen (z.B. für Secrets oder Sidecar-Konfiguration).
@@ -81,9 +170,13 @@ mysql:
       mode: SIMPLE
       # Name eines Kubernetes Secrets mit dem CA-Zertifikat (key: cacert).
       credentialName: mysql-ca-cert
-      # true = Helm erstellt das Secret automatisch aus ca/ca-gmk.pem.
+      # true = Helm erstellt das Secret aus caCert.
       # false = Secret muss manuell angelegt werden (z.B. via External Secrets Operator).
       createCaSecret: false
+      # PEM-Inhalt des CA-Zertifikats – nur relevant wenn createCaSecret: true.
+      # Liegt außerhalb des Charts und wird beim Deploy übergeben:
+      #   --set-file mysql.external.tls.caCert=/local-ca/ca.pem
+      caCert: ""
     connectionPool:
       # Maximale Anzahl gleichzeitiger TCP-Verbindungen – sollte zum HikariCP-Pool-Size passen.
       maxConnections: 10
